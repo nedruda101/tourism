@@ -22,7 +22,7 @@ class Master extends DBConnection
 		extract($_POST);
 		$data = "";
 
-		// Build the data string for insert or update
+
 		foreach ($_POST as $k => $v) {
 			if (!in_array($k, array('id', 'description'))) {
 				if (!empty($data)) $data .= ",";
@@ -35,7 +35,7 @@ class Master extends DBConnection
 			$data .= " `description`='" . addslashes(htmlentities($description)) . "' ";
 		}
 
-		// Insert or update the package record
+
 		if (empty($id)) {
 			$sql = "INSERT INTO `packages` set {$data} ";
 			$save = $this->conn->query($sql);
@@ -45,12 +45,12 @@ class Master extends DBConnection
 			$save = $this->conn->query($sql);
 		}
 
-		// Handle file upload (image and video)
+
 		if ($save) {
 
-			// Handle image upload
+
 			if (isset($_FILES['img']) && count($_FILES['img']['tmp_name']) > 0) {
-				// Create a directory for images if it doesn't exist
+
 				if (!is_dir(base_app . 'uploads/package_' . $id)) {
 					mkdir(base_app . 'uploads/package_' . $id);
 				}
@@ -61,42 +61,38 @@ class Master extends DBConnection
 				}
 			}
 
-			// Handle video upload
+
 			if (isset($_FILES['video']) && $_FILES['video']['error'] == 0) {
 
-				// Define video upload directory
+
 				$video_path = 'uploads/video_' . $id . '/';
 
-				// Create the video directory if it doesn't exist
+
 				if (!is_dir(base_app . $video_path)) {
 					mkdir(base_app . $video_path, 0777, true);
 				}
 
-				// Store the directory path in the database
+
 				$video_directory = 'uploads/video_' . $id;
 				$this->conn->query("UPDATE `packages` set `upload_path_video`='{$video_directory}' where id = '{$id}' ");
 
-				// Define the video filename
+
 				$video_filename = time() . '_' . $_FILES['video']['name'];
 				$video_full_path = $video_path . $video_filename;
 
-				// Move the uploaded video to the specified directory
+
 				if (move_uploaded_file($_FILES['video']['tmp_name'], base_app . $video_full_path)) {
-					// Optionally, you can store the video filename in the database for reference
-					// $this->conn->query("UPDATE `packages` set `video_filename`='{$video_filename}' where id = '{$id}' ");
 				}
 			}
 
-			// Return success response
+
 			$resp['status'] = 'success';
-			$this->settings->set_flashdata('success', "Package successfully saved.");
 		} else {
-			// Return failure response if the SQL query failed
 			$resp['status'] = 'failed';
 			$resp['err'] = $this->conn->error . "[{$sql}]";
 		}
 
-		// Return the response as JSON
+
 		return json_encode($resp);
 	}
 
@@ -121,37 +117,36 @@ class Master extends DBConnection
 
 	function delete_p_video()
 	{
-		// Extract the POST parameters
+
 		extract($_POST);
 
-		// Prepare the full path
+
 		$fullPath = $path;
 		if (strpos($path, base_app) !== 0) {
 			$fullPath = base_app . $path;
 		}
 
-		// Debug info
+
 		error_log("Attempting to delete video at: " . $fullPath);
 
-		// Check if the video file exists
+
 		if (is_file($fullPath)) {
-			// Attempt to delete the video file
+
 			if (unlink($fullPath)) {
-				// Return success response
+
 				$resp['status'] = 'success';
 			} else {
-				// Return failure response if the file could not be deleted
+
 				$resp['status'] = 'failed';
 				$resp['message'] = 'Could not delete file. Check permissions.';
 				$resp['error'] = error_get_last();
 			}
 		} else {
-			// Return failure response if the file does not exist
+
 			$resp['status'] = 'failed';
 			$resp['message'] = 'File does not exist at path: ' . $fullPath;
 		}
 
-		// Return the JSON response
 		return json_encode($resp);
 	}
 
@@ -369,7 +364,6 @@ class Master extends DBConnection
 		}
 		if ($save) {
 			$resp['status'] = 'success';
-			$this->settings->set_flashdata('success', 'Policy successfully saved.');
 		} else {
 			$resp['status'] = 'failed';
 			$resp['error'] = $this->conn->error;

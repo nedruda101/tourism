@@ -224,7 +224,7 @@ if (isset($_GET['id']) && $_GET['id'] > 0) {
         _conf("Are you sure to delete this image permanently?", 'delete_img', ["'" + $(this).attr('data-path') + "'"]);
     });
 
-    // Package form submission
+
     $('#package-form').submit(function(e) {
         e.preventDefault();
         $('.err-msg').remove();
@@ -244,14 +244,18 @@ if (isset($_GET['id']) && $_GET['id'] > 0) {
                 end_loader();
             },
             success: function(resp) {
-                if (typeof resp == 'object' && resp.status == 'success') {
-                    location.href = window.location.href;
+                if (typeof resp === 'object' && resp.status === 'success') {
+                    alert_toast("Location Details successfully saved.", 'success');
+                    setTimeout(function() {
+                        location.href = window.location.href;
+                    }, 1500);
                 } else {
                     alert_toast("An error occurred", 'error');
                     end_loader();
                     console.log(resp);
                 }
             }
+
         });
     });
 

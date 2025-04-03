@@ -16,7 +16,7 @@
                     <col width="20%">
                     <col width="20%">
                     <col width="10%">
-                    <col width="20%">
+
                     <col width="10%">
                 </colgroup>
                 <thead>
@@ -26,7 +26,7 @@
                         <th>From</th>
                         <th>Subject</th>
                         <th>Status</th>
-                        <th>Video</th>
+
                         <th>Action</th>
                     </tr>
                 </thead>
@@ -50,16 +50,7 @@
                                     <span class="badge badge-success">Read</span>
                                 <?php endif; ?>
                             </td>
-                            <td>
-                                <?php if (!empty($row['video'])) : ?>
-                                    <video width="150" height="100" controls>
-                                        <source src="<?php echo $row['video'] ?>" type="video/mp4">
-                                        Your browser does not support the video tag.
-                                    </video>
-                                <?php else : ?>
-                                    No Video
-                                <?php endif; ?>
-                            </td>
+
                             <td align="center">
                                 <button type="button" class="btn btn-flat btn-default btn-sm dropdown-toggle dropdown-icon" data-toggle="dropdown">
                                     Action

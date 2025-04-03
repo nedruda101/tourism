@@ -58,20 +58,24 @@
 
     <!-- Modal for Forms -->
     <div class="modal fade text-dark rounded-0" id="uni_modal" role='dialog'>
-        <div class="modal-dialog modal-md modal-dialog-centered" role="document">
+        <div class="modal-dialog modal-md modal-dialog-centered" role="document" style="width: 500px; max-width: 50%;">
             <div class="modal-content rounded-0">
-                <div class="modal-header">
-                    <h5 class="modal-title"></h5>
+                <div class="modal-header" style="text-align: center; justify-content: center; display: flex;">
+                    <h5 class="modal-title" style="margin: 0 auto;"></h5>
                 </div>
-                <div class="modal-body"></div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-primary" id='submit' onclick="$('#uni_modal form').submit()">Save</button>
-                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                <div class="modal-body" style="text-align: center;">
+
+                    <form>
+                        <div class="form-group">
+                            <input type="text" class="form-control auth-input" placeholder="Sample Input" required>
+                        </div>
+                    </form>
                 </div>
+
             </div>
         </div>
     </div>
-
+    </div>
     <!-- Viewer Modal -->
     <div class="modal fade text-dark" id="viewer_modal" role='dialog'>
         <div class="modal-dialog modal-md" role="document">

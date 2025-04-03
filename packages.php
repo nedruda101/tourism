@@ -6,43 +6,75 @@
             exit;
         }
 
-
         $items_per_page = 6;
         $current_page = isset($_GET['p']) ? max(1, intval($_GET['p'])) : 1;
         $offset = ($current_page - 1) * $items_per_page;
+        $search_query = isset($_GET['search']) ? trim($_GET['search']) : ''; // Get search term from URL
         ?>
         <h2 class="text-center text-white mb-4">Featured Destinations</h2>
         <div class="d-flex w-100 justify-content-center mb-4">
             <hr class="border-light" style="border:2px solid" width="10%">
         </div>
 
-        <!-- Sort/Filter Section -->
+        <!-- Sort/Filter and Search Section -->
         <div class="sort-filter-container mb-4 text-center bg-white p-3 rounded shadow-sm">
-            <div class="d-flex justify-content-center flex-wrap">
+            <div class="d-flex justify-content-center flex-wrap align-items-center">
+                <!-- Search Bar -->
+                <div class="input-group w-25 mb-2 mx-2 me-auto">
+                    <input type="text" class="form-control" id="search-input" placeholder="Search destinations..." value="<?php echo htmlspecialchars($search_query); ?>">
+                    <button class="btn btn-primary" type="button" onclick="searchPackages()">Search</button>
+                </div>
+                <!-- Sort Buttons -->
                 <button class="btn btn-outline-dark m-1 sort-filter-btn <?php echo !isset($_GET['sort']) || $_GET['sort'] == 'recommended' ? 'active' : '' ?>" onclick="sortPackages('recommended')">Recommended</button>
                 <button class="btn btn-outline-dark m-1 sort-filter-btn <?php echo isset($_GET['sort']) && $_GET['sort'] == 'rating' ? 'active' : '' ?>" onclick="sortPackages('rating')">Traveler Rating</button>
                 <button class="btn btn-outline-dark m-1 sort-filter-btn <?php echo isset($_GET['sort']) && $_GET['sort'] == 'popularity' ? 'active' : '' ?>" onclick="sortPackages('popularity')">Popularity</button>
+                <button class="btn btn-outline-dark m-1 sort-filter-btn <?php echo isset($_GET['sort']) && $_GET['sort'] == 'free' ? 'active' : '' ?>" onclick="sortPackages('free')">Free Entry</button>
             </div>
         </div>
 
         <script>
             function sortPackages(type) {
-                window.location.href = `./?page=packages&sort=${type}&p=1`;
+                const search = document.getElementById('search-input').value;
+
+
+                const isCurrentlyActive = <?php echo isset($_GET['sort']) ? "'" . $_GET['sort'] . "'" : "'recommended'" ?> === type;
+
+                if (isCurrentlyActive) {
+
+                    window.location.href = `./?page=packages&search=${encodeURIComponent(search)}&p=1`;
+                } else {
+
+                    window.location.href = `./?page=packages&sort=${type}&search=${encodeURIComponent(search)}&p=1`;
+                }
             }
+
+            function searchPackages() {
+                const search = document.getElementById('search-input').value;
+                const sort = '<?php echo isset($_GET['sort']) ? $_GET['sort'] : 'recommended'; ?>';
+                window.location.href = `./?page=packages&sort=${sort}&search=${encodeURIComponent(search)}&p=1`;
+            }
+
+
+            document.getElementById('search-input').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    searchPackages();
+                }
+            });
         </script>
 
-        <!-- Featured Spots Section -->
         <div class="row">
             <?php
             $sort_type = isset($_GET['sort']) ? $_GET['sort'] : 'recommended';
 
-            // Get total count for pagination
             $count_query = "SELECT COUNT(*) as total FROM packages WHERE status = 1";
+            if (!empty($search_query)) {
+                $count_query .= " AND title LIKE '%" . $conn->real_escape_string($search_query) . "%'";
+            }
             $total_result = $conn->query($count_query);
             $total_items = $total_result->fetch_assoc()['total'];
             $total_pages = ceil($total_items / $items_per_page);
 
-            // Main query with pagination
+
             switch ($sort_type) {
                 case 'rating':
                     $query = "
@@ -50,10 +82,22 @@
                         FROM packages p
                         LEFT JOIN rate_review r ON p.id = r.package_id
                         WHERE p.status = 1
+                    ";
+                    if (!empty($search_query)) {
+                        $query .= " AND p.title LIKE '%" . $conn->real_escape_string($search_query) . "%'";
+                    }
+                    $query .= "
                         GROUP BY p.id
                         ORDER BY avg_rating DESC
                         LIMIT $offset, $items_per_page
                     ";
+                    break;
+                case 'free':
+                    $query = "SELECT * FROM packages WHERE status = 1 AND LOWER(cost) LIKE '%free entry%'";
+                    if (!empty($search_query)) {
+                        $query .= " AND title LIKE '%" . $conn->real_escape_string($search_query) . "%'";
+                    }
+                    $query .= " ORDER BY title ASC LIMIT $offset, $items_per_page";
                     break;
 
                 case 'popularity':
@@ -62,6 +106,11 @@
                         FROM packages p
                         LEFT JOIN rate_review r ON p.id = r.package_id
                         WHERE p.status = 1
+                    ";
+                    if (!empty($search_query)) {
+                        $query .= " AND p.title LIKE '%" . $conn->real_escape_string($search_query) . "%'";
+                    }
+                    $query .= "
                         GROUP BY p.id
                         ORDER BY review_count DESC
                         LIMIT $offset, $items_per_page
@@ -69,11 +118,19 @@
                     break;
 
                 default:
-                    $query = "SELECT * FROM packages WHERE status = 1 ORDER BY RAND() LIMIT $offset, $items_per_page";
+                    $query = "SELECT * FROM packages WHERE status = 1";
+                    if (!empty($search_query)) {
+                        $query .= " AND title LIKE '%" . $conn->real_escape_string($search_query) . "%'";
+                    }
+                    $query .= " ORDER BY RAND() LIMIT $offset, $items_per_page";
                     break;
             }
 
             $packages = $conn->query($query);
+
+            if ($packages->num_rows == 0) {
+                echo '<p class="text-center text-white">No destinations found matching your search.</p>';
+            }
 
             while ($row = $packages->fetch_assoc()) :
                 $cover = '';
@@ -110,11 +167,6 @@
                         </div>
                         <div class="card-body">
                             <h5 class="card-title text-dark fw-bold"><?php echo $row['title'] ?></h5>
-                            <div class="d-flex align-items-center mb-2">
-
-
-                            </div>
-
                             <p class="card-text text-muted small"><?php echo substr($row['description'], 0, 100) . '...'; ?></p>
                         </div>
                         <div class="card-footer bg-white border-top-0 d-flex justify-content-between align-items-center">
@@ -138,14 +190,14 @@
                 <ul class="pagination">
                     <?php if ($current_page > 1) : ?>
                         <li class="page-item">
-                            <a class="page-link" href="./?page=packages&sort=<?php echo $sort_type ?>&p=<?php echo $current_page - 1 ?>" aria-label="Previous">
-                                <span aria-hidden="true">&laquo;</span>
+                            <a class="page-link" href="./?page=packages&sort=<?php echo $sort_type ?>&search=<?php echo urlencode($search_query) ?>&p=<?php echo $current_page - 1 ?>" aria-label="Previous">
+                                <span aria-hidden="true">«</span>
                             </a>
                         </li>
                     <?php endif; ?>
 
                     <?php
-                    $show_pages = 5; // Number of page links to show
+                    $show_pages = 5;
                     $start_page = max(1, $current_page - floor($show_pages / 2));
                     $end_page = min($total_pages, $start_page + $show_pages - 1);
 
@@ -156,14 +208,14 @@
                     for ($i = $start_page; $i <= $end_page; $i++) :
                     ?>
                         <li class="page-item <?php echo $i == $current_page ? 'active' : '' ?>">
-                            <a class="page-link" href="./?page=packages&sort=<?php echo $sort_type ?>&p=<?php echo $i ?>"><?php echo $i ?></a>
+                            <a class="page-link" href="./?page=packages&sort=<?php echo $sort_type ?>&search=<?php echo urlencode($search_query) ?>&p=<?php echo $i ?>"><?php echo $i ?></a>
                         </li>
                     <?php endfor; ?>
 
                     <?php if ($current_page < $total_pages) : ?>
                         <li class="page-item">
-                            <a class="page-link" href="./?page=packages&sort=<?php echo $sort_type ?>&p=<?php echo $current_page + 1 ?>" aria-label="Next">
-                                <span aria-hidden="true">&raquo;</span>
+                            <a class="page-link" href="./?page=packages&sort=<?php echo $sort_type ?>&search=<?php echo urlencode($search_query) ?>&p=<?php echo $current_page + 1 ?>" aria-label="Next">
+                                <span aria-hidden="true">»</span>
                             </a>
                         </li>
                     <?php endif; ?>

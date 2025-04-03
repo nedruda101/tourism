@@ -44,6 +44,13 @@
         #fullSizeVideo {
             max-height: 80vh;
         }
+
+        #tourCarousel .carousel-item {
+            transition: transform 0.2s ease-in-out, opacity 0.2s ease-in-out;
+
+            background-color: black;
+
+        }
     </style>
     <div class="container">
         <?php
