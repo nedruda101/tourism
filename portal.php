@@ -10,7 +10,7 @@
 <!-- Masthead-->
 <header class="masthead">
 	<div class="container">
-		<div class="masthead-subheading">Welcome to Tupi Tourist Information Hub</div>
+		<div class="masthead-subheading"></div>
 		<div class="masthead-heading text-uppercase">Discover Attractions & Local Insights</div>
 		<a class="btn btn-primary btn-xl text-uppercase" href="#home">View Tourist Spot</a>
 	</div>
@@ -24,49 +24,101 @@
 		</div>
 		<div class="row">
 			<?php
-			$packages = $conn->query("SELECT * FROM `packages` order by rand() limit 3");
-			while ($row = $packages->fetch_assoc()) :
-				$cover = '';
-				if (is_dir(base_app . 'uploads/package_' . $row['id'])) {
-					$img = scandir(base_app . 'uploads/package_' . $row['id']);
-					$k = array_search('.', $img);
-					if ($k !== false)
-						unset($img[$k]);
-					$k = array_search('..', $img);
-					if ($k !== false)
-						unset($img[$k]);
-					$cover = isset($img[2]) ? 'uploads/package_' . $row['id'] . '/' . $img[2] : "";
+			$user_preference = isset($_SESSION['userdata']['preference']) ? $_SESSION['userdata']['preference'] : '';
+			$max_display = 6;
+			$displayed_ids = [];
+			$packages = [];
+
+			// Step 1: Get preference-based packages
+			if (!empty($user_preference)) {
+				$preferences = explode(',', $user_preference);
+				$likes = [];
+
+				foreach ($preferences as $pref) {
+					$pref = $conn->real_escape_string(trim($pref));
+					$likes[] = "`category` LIKE '%$pref%'";
 				}
+
+				if (!empty($likes)) {
+					$preferred_query = "SELECT * FROM `packages` WHERE " . implode(" OR ", $likes) . " LIMIT $max_display";
+					$result = $conn->query($preferred_query);
+					if ($result && $result->num_rows > 0) {
+						while ($row = $result->fetch_assoc()) {
+							$packages[] = $row;
+							$displayed_ids[] = $row['id'];
+						}
+					}
+				}
+
+				// Step 2: Fill with random packages if less than $max_display
+				$remaining = $max_display - count($packages);
+				if ($remaining > 0) {
+					$exclude_ids = implode(",", array_map('intval', $displayed_ids));
+					$fallback_query = "SELECT * FROM `packages` " . (!empty($exclude_ids) ? "WHERE `id` NOT IN ($exclude_ids)" : "") . " ORDER BY RAND() LIMIT $remaining";
+					$fallback_result = $conn->query($fallback_query);
+					if ($fallback_result && $fallback_result->num_rows > 0) {
+						while ($row = $fallback_result->fetch_assoc()) {
+							$packages[] = $row;
+						}
+					}
+				}
+			} else {
+				// No preferences? Just show 6 random
+				$result = $conn->query("SELECT * FROM `packages` ORDER BY RAND() LIMIT $max_display");
+				if ($result && $result->num_rows > 0) {
+					while ($row = $result->fetch_assoc()) {
+						$packages[] = $row;
+					}
+				}
+			}
+
+			// Step 3: Display the packages
+			foreach ($packages as $row) :
+				// Cover image
+				$cover = '';
+				$packageDir = base_app . 'uploads/package_' . $row['id'];
+				if (is_dir($packageDir)) {
+					$img = array_values(array_diff(scandir($packageDir), ['.', '..']));
+					if (!empty($img)) {
+						$cover = 'uploads/package_' . $row['id'] . '/' . $img[0];
+					}
+				}
+
 				$row['description'] = strip_tags(stripslashes(html_entity_decode($row['description'])));
 
-				$review = $conn->query("SELECT * FROM `rate_review` where package_id='{$row['id']}'");
-				$review_count = $review->num_rows;
+				// Rating
 				$rate = 0;
+				$review = $conn->query("SELECT * FROM `rate_review` WHERE package_id='{$row['id']}'");
+				$review_count = $review->num_rows;
 				while ($r = $review->fetch_assoc()) {
 					$rate += $r['rate'];
 				}
-				if ($rate > 0 && $review_count > 0)
+				if ($rate && $review_count) {
 					$rate = number_format($rate / $review_count, 0, "");
+				}
 			?>
-				<div class="col-md-4 p-4 ">
+				<div class="col-md-4 p-4">
 					<div class="card w-100 rounded-0">
-						<img class="card-img-top" src="<?php echo validate_image($cover) ?>" alt="<?php echo $row['title'] ?>" height="200rem" style="object-fit:cover">
+						<img class="card-img-top" src="<?php echo validate_image($cover) ?>" alt="<?php echo htmlspecialchars($row['title']) ?>" height="200rem" style="object-fit:cover">
 						<div class="card-body">
-							<h5 class="card-title truncate-1 w-100"><?php echo $row['title'] ?></h5><br>
-
-							<p class="card-text truncate"><?php echo $row['description'] ?></p>
+							<h5 class="card-title truncate-1 w-100"><?php echo htmlspecialchars($row['title']) ?></h5><br>
+							<p class="card-text truncate"><?php echo htmlspecialchars($row['description']) ?></p>
 							<div class="w-100 d-flex justify-content-end">
 								<?php if (isset($_SESSION['userdata'])) : ?>
 									<a href="./?page=view_package&id=<?php echo md5($row['id']) ?>" class="btn btn-sm btn-flat btn-warning">View Details <i class="fa fa-arrow-right"></i></a>
 								<?php else : ?>
-									<a href="?page=login" class="btn btn-sm btn-flat btn-warning">View Details <i class="fa fa-arrow-right"></i></a>
+									<a href="javascript:void(0)" class="btn btn-sm btn-flat btn-warning" onclick="uni_modal('Login', 'login.php', 'large')">View Details <i class="fa fa-arrow-right"></i></a>
 								<?php endif; ?>
 							</div>
 						</div>
 					</div>
 				</div>
-			<?php endwhile; ?>
+			<?php endforeach; ?>
 		</div>
+
+
+
+
 
 	</div>
 </section>

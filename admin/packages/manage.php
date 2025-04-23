@@ -27,6 +27,22 @@ if (isset($_GET['id']) && $_GET['id'] > 0) {
                 <label for="tour_location" class="control-label">Tour Location</label>
                 <textarea name="tour_location" id="" cols="30" rows="2" class="form-control form no-resize"><?php echo isset($tour_location) ? $tour_location : ''; ?></textarea>
             </div>
+            <!-- Category -->
+            <div class="form-group">
+                <label for="category">Select Categories:</label>
+                <div role="group" aria-label="Categories">
+                    <input type="checkbox" id="nature_trip" name="category[]" value="nature_trip" autocomplete="off">
+                    <label for="nature_trip">Nature Trip</label>
+
+                    <input type="checkbox" id="food_trip" name="category[]" value="food_trip" autocomplete="off">
+                    <label for="food_trip">Food Trip</label>
+
+                    <input type="checkbox" id="hiking" name="category[]" value="hiking" autocomplete="off">
+                    <label for="hiking">Hiking</label>
+                </div>
+            </div>
+
+
 
             <!-- Cost selection -->
             <div class="form-group">
@@ -120,22 +136,22 @@ if (isset($_GET['id']) && $_GET['id'] > 0) {
 
 <script>
     function displayVideo(input, _this) {
-        // Check if any files are selected
+
         if (input.files && input.files.length > 0) {
             var fnames = [];
-            // Loop through the selected files and push their names to the array
+
             for (var i = 0; i < input.files.length; i++) {
                 fnames.push(input.files[i].name);
             }
-            // Update the label with the selected file names
+
             _this.siblings('.custom-file-label').html(fnames.join(', '));
         } else {
-            // If no files are selected, reset the label
+
             _this.siblings('.custom-file-label').html('Choose video file');
         }
     }
 
-    // Display selected images
+
     function displayImg(input, _this) {
         console.log(input.files)
         var fnames = []
@@ -145,7 +161,7 @@ if (isset($_GET['id']) && $_GET['id'] > 0) {
         _this.siblings('.custom-file-label').html(fnames.join(', '))
     }
 
-    // Function to delete image
+
     function delete_img($path) {
         start_loader();
 

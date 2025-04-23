@@ -64,14 +64,12 @@
                     <h5 class="modal-title" style="margin: 0 auto;"></h5>
                 </div>
                 <div class="modal-body" style="text-align: center;">
-
                     <form>
                         <div class="form-group">
                             <input type="text" class="form-control auth-input" placeholder="Sample Input" required>
                         </div>
                     </form>
                 </div>
-
             </div>
         </div>
     </div>
@@ -86,5 +84,23 @@
         </div>
     </div>
 </body>
+
+<script>
+    $(document).on('show.bs.modal', function() {
+
+        $('body').css('overflow', 'hidden');
+
+        $('#mainNav').removeClass('navbar-shrink');
+    });
+
+    $(document).on('hidden.bs.modal', function() {
+
+        $('body').css('overflow', 'auto');
+
+
+        location.reload();
+    });
+</script>
+
 
 </html>

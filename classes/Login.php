@@ -43,7 +43,7 @@ class Login extends DBConnection
         }
     }
 
-    // Regular User Login
+
     function login_user()
     {
         extract($_POST);
@@ -54,9 +54,9 @@ class Login extends DBConnection
                     $this->settings->set_userdata($k, $v);
                 }
             }
-            $this->settings->set_userdata('login_type', 0); // Regular User
+            $this->settings->set_userdata('login_type', 0);
             $resp['status'] = 'success';
-            $resp['redirect'] = '/index.php'; // Redirect regular users
+            $resp['redirect'] = '/index.php';
         } else {
             $resp['status'] = 'incorrect';
         }

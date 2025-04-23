@@ -9,7 +9,19 @@
         $items_per_page = 6;
         $current_page = isset($_GET['p']) ? max(1, intval($_GET['p'])) : 1;
         $offset = ($current_page - 1) * $items_per_page;
-        $search_query = isset($_GET['search']) ? trim($_GET['search']) : ''; // Get search term from URL
+        $search_query = isset($_GET['search']) ? trim($_GET['search']) : '';
+        $category_filter = isset($_GET['categories']) ? explode(',', $_GET['categories']) : [];
+
+        // Prepare category filter SQL condition
+        $category_sql = "";
+        if (!empty($category_filter)) {
+            $conditions = [];
+            foreach ($category_filter as $cat) {
+                $safe_cat = $conn->real_escape_string($cat);
+                $conditions[] = "FIND_IN_SET('$safe_cat', category)";
+            }
+            $category_sql = " AND (" . implode(" OR ", $conditions) . ")";
+        }
         ?>
         <h2 class="text-center text-white mb-4">Featured Destinations</h2>
         <div class="d-flex w-100 justify-content-center mb-4">
@@ -30,30 +42,57 @@
                 <button class="btn btn-outline-dark m-1 sort-filter-btn <?php echo isset($_GET['sort']) && $_GET['sort'] == 'popularity' ? 'active' : '' ?>" onclick="sortPackages('popularity')">Popularity</button>
                 <button class="btn btn-outline-dark m-1 sort-filter-btn <?php echo isset($_GET['sort']) && $_GET['sort'] == 'free' ? 'active' : '' ?>" onclick="sortPackages('free')">Free Entry</button>
             </div>
+
+            <!-- Category Filters -->
+            <div class="d-flex justify-content-right flex-wrap mt-3">
+                <label class="mx-2">
+                    <input type="checkbox" class="category-filter" value="nature_trip" <?php echo in_array('nature_trip', $category_filter) ? 'checked' : ''; ?>> Nature Trip
+                </label>
+                <label class="mx-2">
+                    <input type="checkbox" class="category-filter" value="food_trip" <?php echo in_array('food_trip', $category_filter) ? 'checked' : ''; ?>> Food Trip
+                </label>
+                <label class="mx-2">
+                    <input type="checkbox" class="category-filter" value="hiking" <?php echo in_array('hiking', $category_filter) ? 'checked' : ''; ?>> Hiking
+                </label>
+                <button class="btn btn-sm btn-secondary ms-3" onclick="applyCategoryFilter()">Apply Filter</button>
+            </div>
         </div>
 
         <script>
             function sortPackages(type) {
                 const search = document.getElementById('search-input').value;
-
-
+                const selectedCategories = Array.from(document.querySelectorAll('.category-filter:checked')).map(cb => cb.value);
+                const categoryParam = selectedCategories.join(',');
                 const isCurrentlyActive = <?php echo isset($_GET['sort']) ? "'" . $_GET['sort'] . "'" : "'recommended'" ?> === type;
 
+                let url;
                 if (isCurrentlyActive) {
-
-                    window.location.href = `./?page=packages&search=${encodeURIComponent(search)}&p=1`;
+                    url = `./?page=packages&search=${encodeURIComponent(search)}&categories=${encodeURIComponent(categoryParam)}&p=1`;
                 } else {
-
-                    window.location.href = `./?page=packages&sort=${type}&search=${encodeURIComponent(search)}&p=1`;
+                    url = `./?page=packages&sort=${type}&search=${encodeURIComponent(search)}&categories=${encodeURIComponent(categoryParam)}&p=1`;
                 }
+                window.location.href = url;
             }
 
             function searchPackages() {
                 const search = document.getElementById('search-input').value;
                 const sort = '<?php echo isset($_GET['sort']) ? $_GET['sort'] : 'recommended'; ?>';
-                window.location.href = `./?page=packages&sort=${sort}&search=${encodeURIComponent(search)}&p=1`;
+                const selectedCategories = Array.from(document.querySelectorAll('.category-filter:checked')).map(cb => cb.value);
+                const categoryParam = selectedCategories.join(',');
+
+                let url = `./?page=packages&sort=${sort}&search=${encodeURIComponent(search)}&categories=${encodeURIComponent(categoryParam)}&p=1`;
+                window.location.href = url;
             }
 
+            function applyCategoryFilter() {
+                const selectedCategories = Array.from(document.querySelectorAll('.category-filter:checked')).map(cb => cb.value);
+                const search = document.getElementById('search-input').value;
+                const sort = '<?php echo isset($_GET['sort']) ? $_GET['sort'] : 'recommended'; ?>';
+                const categoryParam = selectedCategories.join(',');
+
+                let url = `./?page=packages&sort=${sort}&search=${encodeURIComponent(search)}&categories=${encodeURIComponent(categoryParam)}&p=1`;
+                window.location.href = url;
+            }
 
             document.getElementById('search-input').addEventListener('keypress', function(e) {
                 if (e.key === 'Enter') {
@@ -70,10 +109,11 @@
             if (!empty($search_query)) {
                 $count_query .= " AND title LIKE '%" . $conn->real_escape_string($search_query) . "%'";
             }
+            $count_query .= $category_sql;
+
             $total_result = $conn->query($count_query);
             $total_items = $total_result->fetch_assoc()['total'];
             $total_pages = ceil($total_items / $items_per_page);
-
 
             switch ($sort_type) {
                 case 'rating':
@@ -86,6 +126,7 @@
                     if (!empty($search_query)) {
                         $query .= " AND p.title LIKE '%" . $conn->real_escape_string($search_query) . "%'";
                     }
+                    $query .= $category_sql;
                     $query .= "
                         GROUP BY p.id
                         ORDER BY avg_rating DESC
@@ -97,9 +138,9 @@
                     if (!empty($search_query)) {
                         $query .= " AND title LIKE '%" . $conn->real_escape_string($search_query) . "%'";
                     }
+                    $query .= $category_sql;
                     $query .= " ORDER BY title ASC LIMIT $offset, $items_per_page";
                     break;
-
                 case 'popularity':
                     $query = "
                         SELECT p.*, COUNT(r.id) AS review_count
@@ -110,18 +151,19 @@
                     if (!empty($search_query)) {
                         $query .= " AND p.title LIKE '%" . $conn->real_escape_string($search_query) . "%'";
                     }
+                    $query .= $category_sql;
                     $query .= "
                         GROUP BY p.id
                         ORDER BY review_count DESC
                         LIMIT $offset, $items_per_page
                     ";
                     break;
-
                 default:
                     $query = "SELECT * FROM packages WHERE status = 1";
                     if (!empty($search_query)) {
                         $query .= " AND title LIKE '%" . $conn->real_escape_string($search_query) . "%'";
                     }
+                    $query .= $category_sql;
                     $query .= " ORDER BY RAND() LIMIT $offset, $items_per_page";
                     break;
             }
@@ -190,7 +232,7 @@
                 <ul class="pagination">
                     <?php if ($current_page > 1) : ?>
                         <li class="page-item">
-                            <a class="page-link" href="./?page=packages&sort=<?php echo $sort_type ?>&search=<?php echo urlencode($search_query) ?>&p=<?php echo $current_page - 1 ?>" aria-label="Previous">
+                            <a class="page-link" href="./?page=packages&sort=<?php echo $sort_type ?>&search=<?php echo urlencode($search_query) ?>&categories=<?php echo urlencode(implode(',', $category_filter)) ?>&p=<?php echo $current_page - 1 ?>" aria-label="Previous">
                                 <span aria-hidden="true">«</span>
                             </a>
                         </li>
@@ -208,13 +250,13 @@
                     for ($i = $start_page; $i <= $end_page; $i++) :
                     ?>
                         <li class="page-item <?php echo $i == $current_page ? 'active' : '' ?>">
-                            <a class="page-link" href="./?page=packages&sort=<?php echo $sort_type ?>&search=<?php echo urlencode($search_query) ?>&p=<?php echo $i ?>"><?php echo $i ?></a>
+                            <a class="page-link" href="./?page=packages&sort=<?php echo $sort_type ?>&search=<?php echo urlencode($search_query) ?>&categories=<?php echo urlencode(implode(',', $category_filter)) ?>&p=<?php echo $i ?>"><?php echo $i ?></a>
                         </li>
                     <?php endfor; ?>
 
                     <?php if ($current_page < $total_pages) : ?>
                         <li class="page-item">
-                            <a class="page-link" href="./?page=packages&sort=<?php echo $sort_type ?>&search=<?php echo urlencode($search_query) ?>&p=<?php echo $current_page + 1 ?>" aria-label="Next">
+                            <a class="page-link" href="./?page=packages&sort=<?php echo $sort_type ?>&search=<?php echo urlencode($search_query) ?>&categories=<?php echo urlencode(implode(',', $category_filter)) ?>&p=<?php echo $current_page + 1 ?>" aria-label="Next">
                                 <span aria-hidden="true">»</span>
                             </a>
                         </li>

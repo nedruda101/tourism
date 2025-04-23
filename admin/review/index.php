@@ -4,7 +4,7 @@
 </script>
 <?php endif;?>
 <div class="col-sm-6">
-  <h1 class="m-0" style="color: white;">Review</h1>
+  <h1 class="m-0" style="color: white;"></h1>
 </div>
 <div class="card card-outline card-primary">
 	<div class="card-header">

@@ -22,20 +22,28 @@ class Master extends DBConnection
 		extract($_POST);
 		$data = "";
 
-
+		// Process other fields
 		foreach ($_POST as $k => $v) {
-			if (!in_array($k, array('id', 'description'))) {
+			if (!in_array($k, array('id', 'description', 'category'))) {
 				if (!empty($data)) $data .= ",";
 				$data .= " `{$k}`='{$v}' ";
 			}
 		}
 
+		// Process description field
 		if (isset($_POST['description'])) {
 			if (!empty($data)) $data .= ",";
 			$data .= " `description`='" . addslashes(htmlentities($description)) . "' ";
 		}
 
+		// Process categories
+		if (isset($_POST['category']) && !empty($_POST['category'])) {
+			$categories = implode(",", $_POST['category']); // Convert array of categories to a comma-separated string
+			if (!empty($data)) $data .= ",";
+			$data .= " `category`='{$categories}' "; // Assuming 'category' is a column in your table
+		}
 
+		// Insert or update package
 		if (empty($id)) {
 			$sql = "INSERT INTO `packages` set {$data} ";
 			$save = $this->conn->query($sql);
@@ -45,12 +53,9 @@ class Master extends DBConnection
 			$save = $this->conn->query($sql);
 		}
 
-
+		// Handle image uploads
 		if ($save) {
-
-
 			if (isset($_FILES['img']) && count($_FILES['img']['tmp_name']) > 0) {
-
 				if (!is_dir(base_app . 'uploads/package_' . $id)) {
 					mkdir(base_app . 'uploads/package_' . $id);
 				}
@@ -61,40 +66,32 @@ class Master extends DBConnection
 				}
 			}
 
-
+			// Handle video uploads
 			if (isset($_FILES['video']) && $_FILES['video']['error'] == 0) {
-
-
 				$video_path = 'uploads/video_' . $id . '/';
-
-
 				if (!is_dir(base_app . $video_path)) {
 					mkdir(base_app . $video_path, 0777, true);
 				}
-
-
 				$video_directory = 'uploads/video_' . $id;
 				$this->conn->query("UPDATE `packages` set `upload_path_video`='{$video_directory}' where id = '{$id}' ");
-
-
 				$video_filename = time() . '_' . $_FILES['video']['name'];
 				$video_full_path = $video_path . $video_filename;
-
-
 				if (move_uploaded_file($_FILES['video']['tmp_name'], base_app . $video_full_path)) {
+					// Video uploaded successfully
 				}
 			}
 
-
+			// Respond with success
 			$resp['status'] = 'success';
 		} else {
+			// Error occurred
 			$resp['status'] = 'failed';
 			$resp['err'] = $this->conn->error . "[{$sql}]";
 		}
 
-
 		return json_encode($resp);
 	}
+
 
 
 	function delete_p_img()
@@ -204,73 +201,113 @@ class Master extends DBConnection
 	function register()
 	{
 		extract($_POST);
-		$data = "";
-		$_POST['password'] = md5($password);
-		foreach ($_POST as $k => $v) {
-			if (!empty($data)) $data .= ",";
-			$data .= " `{$k}`='{$v}' ";
+		$resp = array();
+
+
+		if (empty($firstname) || empty($lastname) || empty($username) || empty($password)) {
+			$resp['status'] = 'failed';
+			$resp['msg'] = 'All fields are required.';
+			return json_encode($resp);
 		}
-		$check = $this->conn->query("SELECT * FROM `users` where username='{$username}' ")->num_rows;
+
+
+		$check = $this->conn->query("SELECT * FROM users WHERE username = '{$username}'")->num_rows;
 		if ($check > 0) {
 			$resp['status'] = 'failed';
-			$resp['msg'] = "Username already taken.";
+			$resp['msg'] = 'Username already exists';
 			return json_encode($resp);
-			exit;
 		}
-		$save = $this->conn->query("INSERT INTO `users` set $data ");
-		if ($save) {
-			foreach ($_POST as $k => $v) {
-				$this->settings->set_userdata($k, $v);
-			}
-			$this->settings->set_userdata('id', $this->conn->insert_id);
+
+
+		$preference_str = isset($preference) && is_array($preference) ? implode(',', $preference) : '';
+
+
+		$hashed_password = md5($password);
+
+		$sql = "INSERT INTO users (firstname, lastname, username, password, preference) 
+            VALUES (?, ?, ?, ?, ?)";
+		$stmt = $this->conn->prepare($sql);
+		if ($stmt === false) {
+			$resp['status'] = 'failed';
+			$resp['msg'] = 'Database error: ' . $this->conn->error;
+			return json_encode($resp);
+		}
+
+
+		$stmt->bind_param("sssss", $firstname, $lastname, $username, $hashed_password, $preference_str);
+
+		if ($stmt->execute()) {
 			$resp['status'] = 'success';
 		} else {
 			$resp['status'] = 'failed';
-			$resp['error'] = $this->conn->error;
+			$resp['msg'] = 'Something went wrong during registration';
 		}
+
+		$stmt->close();
+
 		return json_encode($resp);
 	}
+
+
+
+
 	function update_account()
 	{
 		extract($_POST);
 		$data = "";
+
+		// Handle password change
 		if (!empty($password)) {
 			$_POST['password'] = md5($password);
 			if (md5($cpassword) != $this->settings->userdata('password')) {
 				$resp['status'] = 'failed';
 				$resp['msg'] = "Current Password is Incorrect";
 				return json_encode($resp);
-				exit;
 			}
 		}
-		$check = $this->conn->query("SELECT * FROM `users`  where `username`='{$username}' and `id` != $id ")->num_rows;
+
+		// Ensure preferences are processed even if nothing is selected
+		if (isset($_POST['preference']) && is_array($_POST['preference'])) {
+			$_POST['preference'] = implode(',', $_POST['preference']);
+		} else {
+			$_POST['preference'] = ''; // No preferences selected
+		}
+
+		// Check for unique username
+		$check = $this->conn->query("SELECT * FROM `users` WHERE `username`='{$username}' AND `id` != $id")->num_rows;
 		if ($check > 0) {
 			$resp['status'] = 'failed';
 			$resp['msg'] = "Username already taken.";
 			return json_encode($resp);
-			exit;
 		}
+
+		// Prepare data for update
 		foreach ($_POST as $k => $v) {
 			if ($k == 'cpassword' || ($k == 'password' && empty($v)))
 				continue;
-			if (!empty($data)) $data .= ",";
+			if (!empty($data)) $data .= ", ";
+			$v = $this->conn->real_escape_string($v);
 			$data .= " `{$k}`='{$v}' ";
 		}
-		$save = $this->conn->query("UPDATE `users` set $data where id = $id ");
+
+		// Execute update query
+		$save = $this->conn->query("UPDATE `users` SET $data WHERE id = $id ");
 		if ($save) {
 			foreach ($_POST as $k => $v) {
 				if ($k != 'cpassword')
 					$this->settings->set_userdata($k, $v);
 			}
 
-			$this->settings->set_userdata('id', $this->conn->insert_id);
 			$resp['status'] = 'success';
 		} else {
 			$resp['status'] = 'failed';
 			$resp['error'] = $this->conn->error;
 		}
+
 		return json_encode($resp);
 	}
+
+
 
 	function save_inquiry()
 	{
@@ -415,9 +452,6 @@ switch ($action) {
 		break;
 	case 'delete_package':
 		echo $Master->delete_package();
-		break;
-	case 'save_highlight':
-		echo $master->save_highlight();
 		break;
 	case 'delete_p_img':
 		echo $Master->delete_p_img();

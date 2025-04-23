@@ -55,18 +55,6 @@
     }
   })
 </script>
-<footer class="main-footer text-sm">
-  <strong>Copyright © <?php echo date('Y') ?>.
-    <!-- <a href=""></a> -->
-  </strong>
-  All rights reserved.
-  <div class="float-right d-none d-sm-inline-block">
-    <b><?php echo $_settings->info('short_name') ?> (by: <a href="mailto:nedrudarey101@gmail.com" target="blank">Alvin Salmo</a> )</b>
-  </div>
-</footer>
-</div>
-<script>
-  $.widget.bridge('uibutton', $.ui.button)
 </script>
 <!-- Bootstrap 4 -->
 <script src="<?php echo base_url ?>plugins/bootstrap/js/bootstrap.bundle.min.js"></script>

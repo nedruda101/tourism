@@ -1,7 +1,7 @@
 <!-- Navigation -->
 <nav class="navbar navbar-expand-lg navbar-dark fixed-top navbar-shrink" id="mainNav">
   <div class="container-fluid">
-    <a class="navbar-brand" href="#page-top"><span class="text-warning">Tourism</span></a>
+    <a class="navbar-brand" href="#page-top"><span class="text-warning">Tupi Tourism Information System</span></a>
     <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarResponsive" aria-controls="navbarResponsive" aria-expanded="false" aria-label="Toggle navigation">
       Menu
       <i class="fas fa-bars ms-1"></i>
@@ -29,18 +29,18 @@
 
 <script>
   $(function() {
-    // Check if user is logged in
+
     var isLoggedIn = <?php echo isset($_SESSION['userdata']) ? 'true' : 'false'; ?>;
 
-    // Handle the "Featured" link click event
+
     $('#featured-link').click(function(e) {
       if (!isLoggedIn) {
-        // If the user is not logged in, show the login modal
+
         e.preventDefault();
         uni_modal("Login", "login.php", "large");
       } else {
-        // If the user is logged in, let them go to the page as usual
-        window.location.href = $(this).attr('href'); // Navigate to the Featured page
+
+        window.location.href = $(this).attr('href');
       }
     });
 
