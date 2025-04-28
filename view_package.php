@@ -203,6 +203,9 @@
                         <button class="nav-link px-4 py-3" id="reviews-tab" data-bs-toggle="tab" data-bs-target="#reviews" type="button" role="tab" aria-controls="reviews" aria-selected="false">Reviews (<?php echo count($feed) ?>)</button>
                     </li>
                     <li class="nav-item" role="presentation">
+                        <button class="nav-link px-4 py-3" id="comments-tab" data-bs-toggle="tab" data-bs-target="#comments" type="button" role="tab" aria-controls="comments" aria-selected="false">Comments</button>
+                    </li>
+                    <li class="nav-item" role="presentation">
                         <button class="nav-link px-4 py-3" id="map-tab" data-bs-toggle="tab" data-bs-target="#map" type="button" role="tab" aria-controls="map" aria-selected="false">Map</button>
                     </li>
                     <li class="nav-item" role="presentation">
@@ -356,6 +359,8 @@
                             </div>
                         <?php endif; ?>
                     </div>
+                    <!-- Comment tabbb-->
+
 
                     <!-- Map Tab -->
                     <div class="tab-pane fade" id="map" role="tabpanel" aria-labelledby="map-tab">

@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: localhost
--- Generation Time: Apr 23, 2025 at 07:35 AM
+-- Generation Time: Apr 28, 2025 at 09:00 AM
 -- Server version: 10.4.28-MariaDB
 -- PHP Version: 8.2.4
 
@@ -20,29 +20,6 @@ SET time_zone = "+00:00";
 --
 -- Database: `tourism_db`
 --
-
--- --------------------------------------------------------
-
---
--- Table structure for table `book_list`
---
-
-CREATE TABLE `book_list` (
-  `id` int(30) NOT NULL,
-  `user_id` int(30) NOT NULL,
-  `package_id` int(30) NOT NULL,
-  `status` tinyint(4) NOT NULL DEFAULT 0 COMMENT '0=pending,1=confirm, 2=cancelled\r\n',
-  `schedule` date DEFAULT NULL,
-  `date_created` datetime NOT NULL DEFAULT current_timestamp()
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
---
--- Dumping data for table `book_list`
---
-
-INSERT INTO `book_list` (`id`, `user_id`, `package_id`, `status`, `schedule`, `date_created`) VALUES
-(2, 4, 8, 3, '2021-06-21', '2021-06-19 08:37:59'),
-(3, 5, 8, 3, '2021-06-18', '2021-06-19 11:51:50');
 
 -- --------------------------------------------------------
 
@@ -163,9 +140,9 @@ CREATE TABLE `system_info` (
 INSERT INTO `system_info` (`id`, `meta_field`, `meta_value`) VALUES
 (1, 'name', 'Tourism Information System'),
 (6, 'short_name', 'TIS'),
-(11, 'logo', 'uploads/1743688620_tupilogo.png'),
+(11, 'logo', 'uploads/1745391660_1743691140_front1.jpg'),
 (13, 'user_avatar', 'uploads/user_avatar.jpg'),
-(14, 'cover', 'uploads/191877141_4183016508387073_3342214729531054345_n.jpg'),
+(14, 'cover', '[\"uploads/cover_images/1745823547_spider-2.jpg\",\"uploads/cover_images/1745823547_spider.jpg\",\"uploads/cover_images/1745823547_spider1-2.jpg\",\"uploads/cover_images/1745823547_spider1.jpg\",\"uploads/cover_images/1745823547_spider2-2.jpg\",\"uploads/cover_images/1745823547_spider2.jpg\"]'),
 (15, 'policy', '                                &lt;h3&gt;&lt;strong&gt;Tupi Local Laws and Regulations&lt;/strong&gt;&lt;/h3&gt;\n&lt;p&gt;Tupi, a vibrant town nestled in the heart of South Cotabato, has laws and regulations in place to ensure the safety, well-being, and harmonious living of its residents and visitors. The local government of Tupi is committed to preserving its natural beauty, agricultural growth, and cultural heritage while maintaining peace and order.&lt;/p&gt;\n&lt;ul&gt;\n&lt;li&gt;\n&lt;p&gt;&lt;strong&gt;Environmental Protection&lt;/strong&gt;: The community emphasizes environmental conservation, ensuring that the natural beauty of Tupi, from its fertile soils to its rich flora, is preserved for future generations. Visitors should respect local flora and fauna, including the abundant flowers and fruits grown in the area, and avoid littering in natural spaces.&lt;/p&gt;\n&lt;/li&gt;\n&lt;li&gt;\n&lt;p&gt;&lt;strong&gt;Agricultural Regulations&lt;/strong&gt;: As Tupi is a major agricultural hub, visitors are encouraged to respect farming lands. Activities like hiking and exploring should be done with care to avoid damaging crops or property. Local farms also regulate the use of pesticides and fertilizers to maintain the health of the land.&lt;/p&gt;\n&lt;/li&gt;\n&lt;li&gt;\n&lt;p&gt;&lt;strong&gt;Respect for Indigenous Cultures&lt;/strong&gt;: Tupi is home to indigenous groups, including the Blaan tribe, whose cultural practices should be respected. Visitors should refrain from engaging in activities that disrespect or harm the local communities&#039; traditions.&lt;/p&gt;\n&lt;/li&gt;\n&lt;/ul&gt;\n&lt;h3&gt;&lt;strong&gt;Emergency Contacts in Tupi&lt;/strong&gt;&lt;/h3&gt;\n&lt;p&gt;In case of any emergency, it is essential to have the right contacts available to ensure swift assistance:&lt;/p&gt;\n&lt;ul&gt;\n&lt;li&gt;\n&lt;p&gt;&lt;strong&gt;Police&lt;/strong&gt;: 911&lt;/p&gt;\n&lt;/li&gt;\n&lt;li&gt;\n&lt;p&gt;&lt;strong&gt;Medical Emergency&lt;/strong&gt;: 112&lt;/p&gt;\n&lt;/li&gt;\n&lt;li&gt;\n&lt;p&gt;&lt;strong&gt;Fire Department&lt;/strong&gt;: 911&lt;/p&gt;\n&lt;/li&gt;\n&lt;li&gt;\n&lt;p&gt;&lt;strong&gt;Local Government Office&lt;/strong&gt;: (083) 226-2800&lt;/p&gt;\n&lt;/li&gt;\n&lt;li&gt;\n&lt;p&gt;&lt;strong&gt;Barangay Poblacion&lt;/strong&gt;: For local concerns and immediate assistance, you can contact the nearest barangay office.&lt;/p&gt;\n&lt;/li&gt;\n&lt;/ul&gt;\n&lt;h3&gt;&lt;strong&gt;Dos and Don&rsquo;ts in Tupi&lt;/strong&gt;&lt;/h3&gt;\n&lt;p&gt;When visiting Tupi, it&#039;s essential to adhere to the following dos and don&#039;ts to maintain a respectful and safe experience:&lt;/p&gt;\n&lt;h4&gt;&lt;strong&gt;Dos&lt;/strong&gt;:&lt;/h4&gt;\n&lt;ul&gt;\n&lt;li&gt;\n&lt;p&gt;&lt;strong&gt;Respect Local Customs&lt;/strong&gt;: Follow local customs and practices, especially when interacting with indigenous communities like the Blaan tribe.&lt;/p&gt;\n&lt;/li&gt;\n&lt;li&gt;\n&lt;p&gt;&lt;strong&gt;Support Local Farmers&lt;/strong&gt;: If visiting farms, be sure to support local businesses by purchasing their fresh produce or products.&lt;/p&gt;\n&lt;/li&gt;\n&lt;li&gt;\n&lt;p&gt;&lt;strong&gt;Observe Environmental Etiquette&lt;/strong&gt;: Dispose of trash responsibly and refrain from disturbing the natural environment, including plants and wildlife.&lt;/p&gt;\n&lt;/li&gt;\n&lt;li&gt;\n&lt;p&gt;&lt;strong&gt;Use Local Services&lt;/strong&gt;: Engage with local businesses, eateries, and guides to promote sustainable tourism and support the local economy.&lt;/p&gt;\n&lt;/li&gt;\n&lt;/ul&gt;\n&lt;h4&gt;&lt;strong&gt;Don&rsquo;ts&lt;/strong&gt;:&lt;/h4&gt;\n&lt;ul&gt;\n&lt;li&gt;\n&lt;p&gt;&lt;strong&gt;Don&rsquo;t Litter&lt;/strong&gt;: Keep Tupi clean by disposing of waste properly, particularly in agricultural and natural areas.&lt;/p&gt;\n&lt;/li&gt;\n&lt;li&gt;\n&lt;p&gt;&lt;strong&gt;Don&rsquo;t Disturb Wildlife&lt;/strong&gt;: Avoid disturbing or harming animals, especially in protected areas like the Linan Tarsier Sanctuary.&lt;/p&gt;\n&lt;/li&gt;\n&lt;li&gt;\n&lt;p&gt;&lt;strong&gt;Don&rsquo;t Engage in Illegal Activities&lt;/strong&gt;: Abide by local laws, including regulations about farming, fishing, and hunting in protected areas.&lt;/p&gt;\n&lt;/li&gt;\n&lt;li&gt;\n&lt;p&gt;&lt;strong&gt;Don&rsquo;t Ignore Local Guidelines&lt;/strong&gt;: Always follow safety guidelines provided by local authorities, especially when hiking or participating in adventure activities.&lt;/p&gt;\n&lt;/li&gt;\n&lt;/ul&gt;\n&lt;h3&gt;&lt;strong&gt;Safety Tips for Tourists in Tupi&lt;/strong&gt;&lt;/h3&gt;\n&lt;p&gt;To ensure a safe and enjoyable visit, follow these essential safety tips:&lt;/p&gt;\n&lt;ul&gt;\n&lt;li&gt;\n&lt;p&gt;&lt;strong&gt;Stay Aware of Your Surroundings&lt;/strong&gt;: Tupi is generally a safe destination, but it&#039;s always best to stay alert, especially when exploring remote areas.&lt;/p&gt;\n&lt;/li&gt;\n&lt;li&gt;\n&lt;p&gt;&lt;strong&gt;Secure Personal Belongings&lt;/strong&gt;: Keep personal items like wallets, phones, and cameras secure, especially in crowded or tourist-heavy areas.&lt;/p&gt;\n&lt;/li&gt;\n&lt;li&gt;\n&lt;p&gt;&lt;strong&gt;Follow Local Guidance&lt;/strong&gt;: Always listen to local authorities or tour guides, especially in areas where there may be hazards or unfamiliar terrain, such as hiking Mount Matutum.&lt;/p&gt;\n&lt;/li&gt;\n&lt;li&gt;\n&lt;p&gt;&lt;strong&gt;Be Prepared for the Weather&lt;/strong&gt;: Tupi&rsquo;s cool climate is a major attraction, but visitors should bring appropriate clothing for varying weather conditions, including rain gear during the wet season.&lt;/p&gt;\n&lt;/li&gt;\n&lt;li&gt;\n&lt;p&gt;&lt;strong&gt;Know Your Route&lt;/strong&gt;: When traveling to remote attractions like the Linan Tarsier Sanctuary or Kablon Farms, make sure you have reliable transportation or a guide.&lt;/p&gt;\n&lt;/li&gt;\n&lt;/ul&gt;\n&lt;p&gt;By following these local laws, safety tips, and respecting Tupi&rsquo;s rich heritage, you can enjoy an unforgettable experience in this beautiful municipality of South Cotabato.&lt;/p&gt;                ');
 
 -- --------------------------------------------------------
@@ -200,17 +177,11 @@ INSERT INTO `users` (`id`, `firstname`, `lastname`, `username`, `password`, `ava
 (7, 'rey', 'rey', 'rey', 'd2b3ea2dfddc40efdc6941359436c847', NULL, NULL, 0, '2025-03-24 10:03:25', NULL, NULL),
 (8, 'Pacle', 'Weak', 'pacs', '827ccb0eea8a706c4c34a16891f84e7b', NULL, NULL, 0, '2025-04-03 22:48:23', NULL, NULL),
 (9, 'Gab', 'Binayot', 'gabs', '827ccb0eea8a706c4c34a16891f84e7b', NULL, NULL, 0, '2025-04-03 22:50:26', NULL, NULL),
-(16, 'rey12', 'rey12', 'rey12', 'd993c387a72030f60d9609c2e0484455', NULL, NULL, 0, '2025-04-23 12:34:44', '2025-04-23 13:10:51', 'nature_trip,food_trip');
+(16, 'rey12', 'rey12', 'rey12', 'd993c387a72030f60d9609c2e0484455', NULL, NULL, 0, '2025-04-23 12:34:44', '2025-04-28 11:16:19', 'food_trip');
 
 --
 -- Indexes for dumped tables
 --
-
---
--- Indexes for table `book_list`
---
-ALTER TABLE `book_list`
-  ADD PRIMARY KEY (`id`);
 
 --
 -- Indexes for table `inquiry`
@@ -247,12 +218,6 @@ ALTER TABLE `users`
 --
 
 --
--- AUTO_INCREMENT for table `book_list`
---
-ALTER TABLE `book_list`
-  MODIFY `id` int(30) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
-
---
 -- AUTO_INCREMENT for table `inquiry`
 --
 ALTER TABLE `inquiry`
@@ -274,7 +239,7 @@ ALTER TABLE `rate_review`
 -- AUTO_INCREMENT for table `system_info`
 --
 ALTER TABLE `system_info`
-  MODIFY `id` int(30) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=16;
+  MODIFY `id` int(30) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=19;
 
 --
 -- AUTO_INCREMENT for table `users`
