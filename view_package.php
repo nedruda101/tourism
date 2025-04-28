@@ -66,7 +66,11 @@
                     $$k = $v;
                 }
             }
-
+            $comments = $conn->query("SELECT c.*, CONCAT(u.firstname, ' ', u.lastname) as name 
+            FROM comments c 
+            INNER JOIN users u ON c.user_id = u.id
+            WHERE c.package_id = '{$id}'
+            ORDER BY c.date_created DESC");
             $review = $conn->query("SELECT r.*, CONCAT(firstname, ' ', lastname) AS name FROM rate_review r 
                             INNER JOIN users u ON r.user_id = u.id 
                             WHERE r.package_id = '{$id}' 
@@ -359,7 +363,80 @@
                             </div>
                         <?php endif; ?>
                     </div>
-                    <!-- Comment tabbb-->
+                    <!-- Comments Tab -->
+                    <div class="tab-pane fade" id="comments" role="tabpanel" aria-labelledby="comments-tab">
+                        <?php if (isset($_SESSION['userdata'])) : ?>
+                            <div class="card mb-4 border-0 shadow-sm">
+                                <div class="card-body p-3">
+                                    <div class="d-flex">
+                                        <img src="<?php echo validate_image('assets/img/user.jpg') ?>" class="rounded-circle me-3" width="40" height="40" alt="">
+                                        <form action="classes/Master.php?f=save_comment" id="comment-form" method="POST" class="flex-grow-1">
+                                            <input name="package_id" type="hidden" value="<?php echo $id ?>" />
+                                            <div class="input-group mb-2">
+                                                <textarea name="comment" class="form-control border-0 bg-light rounded-pill py-2 px-3" placeholder="Write a comment..." onclick="$('#commentControls').collapse('show')" style="resize: none; height: 40px;"></textarea>
+                                            </div>
+                                            <div class="collapse" id="commentControls">
+                                                <div class="d-flex justify-content-end align-items-center mt-2">
+                                                    <button type="submit" class="btn btn-primary rounded-pill px-4">Post Comment</button>
+                                                </div>
+                                            </div>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                        <?php else : ?>
+                            <div class="card mb-4 border-0 shadow-sm">
+                                <div class="card-body p-3">
+                                    <div class="d-flex align-items-center">
+                                        <img src="<?php echo validate_image('assets/img/user.jpg') ?>" class="rounded-circle me-3" width="40" height="40" alt="">
+                                        <div class="bg-light rounded-pill py-2 px-3 flex-grow-1">
+                                            <a href="login.php" class="text-decoration-none">Log in to leave a comment...</a>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        <?php endif; ?>
+
+                        <!-- Comments List -->
+                        <?php
+                        $comment_count = $comments->num_rows;
+                        if ($comment_count > 0) :
+                            $comment_list = array();
+                            while ($row = $comments->fetch_assoc()) {
+                                $row['comment'] = stripslashes(html_entity_decode($row['comment']));
+                                $comment_list[] = $row;
+                            }
+                            foreach ($comment_list as $c) :
+                        ?>
+                                <div class="card mb-3 border-0 shadow-sm">
+                                    <div class="card-body p-3">
+                                        <div class="d-flex">
+                                            <img src="<?php echo validate_image('assets/img/user.jpg') ?>" class="rounded-circle me-3 align-self-start" width="40" height="40" alt="">
+                                            <div class="flex-grow-1">
+                                                <div class="bg-light rounded p-3">
+                                                    <div class="d-flex justify-content-between align-items-center mb-2">
+                                                        <h6 class="mb-0"><?php echo $c['name'] ?></h6>
+                                                    </div>
+                                                    <div class="comment-content">
+                                                        <?php echo $c['comment'] ?>
+                                                    </div>
+                                                </div>
+                                                <div class="text-muted small mt-1 ms-2">
+                                                    <?php echo date("M d, Y h:i A", strtotime($c['date_created'])) ?>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            <?php endforeach; ?>
+                        <?php else : ?>
+                            <div class="text-center py-5">
+                                <img src="assets/img/comment-empty.svg" alt="No Comments" style="max-width: 200px; margin-bottom: 20px;">
+                                <h5>No comments yet</h5>
+                                <p class="text-muted">Be the first to comment on this attraction!</p>
+                            </div>
+                        <?php endif; ?>
+                    </div>
 
 
                     <!-- Map Tab -->
@@ -425,6 +502,70 @@
 <!-- JavaScript for AJAX Review Submission -->
 <script>
     $(document).ready(function() {
+        $('#comment-form').submit(function(e) {
+            e.preventDefault();
+            var form = $(this);
+            var submitBtn = form.find('button[type="submit"]');
+            var originalBtnText = submitBtn.html();
+            submitBtn.html('<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Posting...');
+            submitBtn.prop('disabled', true);
+            $.ajax({
+                url: 'classes/Master.php?f=save_comment',
+                method: 'POST',
+                data: form.serialize(),
+                dataType: 'json',
+                success: function(resp) {
+                    submitBtn.html(originalBtnText);
+                    submitBtn.prop('disabled', false);
+                    if (resp.status === 'success') {
+                        Swal.fire({
+                            toast: true,
+                            position: 'top-end',
+                            icon: 'success',
+                            title: 'Comment posted successfully',
+                            showConfirmButton: false,
+                            timer: 500,
+                            timerProgressBar: true
+                        });
+                        window.location.hash = '#comments';
+                        location.reload();
+
+
+                    } else {
+                        Swal.fire({
+                            title: 'Error!',
+                            text: 'Error: ' + (resp.error || 'Unknown error'),
+                            icon: 'error',
+                            confirmButtonText: 'Try Again'
+                        });
+                    }
+                },
+                error: function(xhr, status, error) {
+                    submitBtn.html(originalBtnText);
+                    submitBtn.prop('disabled', false);
+                    console.error("AJAX Error:", xhr.responseText);
+                    try {
+                        var response = JSON.parse(xhr.responseText);
+                        Swal.fire({
+                            title: 'Error!',
+                            text: 'Error: ' + (response.error || error),
+                            icon: 'error',
+                            confirmButtonText: 'Try Again'
+                        });
+                    } catch (e) {
+                        Swal.fire({
+                            title: 'Server Error!',
+                            text: 'Server error: ' + error,
+                            icon: 'error',
+                            confirmButtonText: 'Try Again'
+                        });
+                    }
+                }
+            });
+
+        });
+    });
+    $(document).ready(function() {
         var tabEl = document.querySelectorAll('button[data-bs-toggle="tab"]');
         tabEl.forEach(function(tab) {
             tab.addEventListener('click', function(event) {
@@ -458,16 +599,21 @@
                     submitBtn.html(originalBtnText);
                     submitBtn.prop('disabled', false);
                     if (resp.status === 'success') {
-                        window.location.hash = '#reviews';
-                        location.reload();
-                    } else {
                         Swal.fire({
-                            title: 'Error!',
-                            text: 'Error: ' + (resp.error || 'Unknown error'),
-                            icon: 'error',
-                            confirmButtonText: 'Try Again'
+                            toast: true,
+                            position: 'top-end',
+                            icon: 'success',
+                            title: 'Review posted successfully',
+                            showConfirmButton: false,
+                            timer: 500,
+                            timerProgressBar: true,
+                            didClose: () => {
+                                window.location.hash = '#reviews';
+                                location.reload();
+                            }
                         });
                     }
+
                 },
                 error: function(xhr, status, error) {
                     submitBtn.html(originalBtnText);

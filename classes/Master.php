@@ -436,6 +436,75 @@ class Master extends DBConnection
 
 		return $highlights;
 	}
+	function save_comment()
+	{
+		extract($_POST);
+
+		$resp = [];
+
+
+		if (!isset($_SESSION['userdata']['id']) || !$_SESSION['userdata']['id']) {
+			echo json_encode(['status' => 'failed', 'error' => 'User not logged in.']);
+			exit;
+		}
+
+		$user_id = $_SESSION['userdata']['id'];
+		$comment = addslashes(htmlentities($comment ?? ''));
+		$package_id = $package_id ?? 0;
+		$parent_id = isset($parent_id) ? $parent_id : NULL;
+
+		$sql = "INSERT INTO `comments` (`package_id`, `user_id`, `comment`, `parent_id`) 
+            VALUES ('$package_id', '$user_id', '$comment', " . ($parent_id ? "'$parent_id'" : "NULL") . ")";
+
+		$save = $this->conn->query($sql);
+
+		if ($save) {
+			$resp['status'] = 'success';
+			$resp['comment_id'] = $this->conn->insert_id;
+		} else {
+			$resp['status'] = 'failed';
+			$resp['error'] = $this->conn->error;
+		}
+
+		echo json_encode($resp);
+		exit;
+	}
+
+
+
+	function delete_comment()
+	{
+		extract($_POST);
+		$del = $this->conn->query("DELETE FROM `comments` where id='{$id}'");
+		if ($del) {
+			$resp['status'] = 'success';
+			$this->settings->set_flashdata("success", "Comment Deleted.");
+		} else {
+			$resp['status'] = 'failed';
+			$resp['error'] = $this->conn->error;
+		}
+		return json_encode($resp);
+	}
+
+	function get_comments($package_id)
+	{
+		$sql = "SELECT c.*, CONCAT(u.firstname, ' ', u.lastname) as name 
+            FROM `comments` c 
+            INNER JOIN `users` u ON c.user_id = u.id
+            WHERE c.package_id = '{$package_id}' 
+            ORDER BY c.date_created ASC";
+
+		$result = $this->conn->query($sql);
+		$comments = [];
+
+		if ($result->num_rows > 0) {
+			while ($row = $result->fetch_assoc()) {
+				$comments[] = $row;
+			}
+		}
+
+		return $comments;
+	}
 }
 
 $Master = new Master();
@@ -484,6 +553,12 @@ switch ($action) {
 		break;
 	case 'save_policy':
 		echo $Master->save_policy();
+		break;
+	case 'save_comment':
+		echo $Master->save_comment();
+		break;
+	case 'delete_comment':
+		echo $Master->delete_comment();
 		break;
 	case 'delete_review':
 		echo $Master->delete_review();
