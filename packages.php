@@ -10,7 +10,7 @@
         $current_page = isset($_GET['p']) ? max(1, intval($_GET['p'])) : 1;
         $offset = ($current_page - 1) * $items_per_page;
         $search_query = isset($_GET['search']) ? trim($_GET['search']) : '';
-        $category_filter = isset($_GET['categories']) ? explode(',', $_GET['categories']) : [];
+        $category_filter = isset($_GET['categories']) && !empty($_GET['categories']) ? explode(',', $_GET['categories']) : [];
 
         // Prepare category filter SQL condition
         $category_sql = "";
@@ -67,9 +67,15 @@
 
                 let url;
                 if (isCurrentlyActive) {
-                    url = `./?page=packages&search=${encodeURIComponent(search)}&categories=${encodeURIComponent(categoryParam)}&p=1`;
+                    url = `./?page=packages&search=${encodeURIComponent(search)}&p=1`;
+                    if (selectedCategories.length > 0) {
+                        url += `&categories=${encodeURIComponent(categoryParam)}`;
+                    }
                 } else {
-                    url = `./?page=packages&sort=${type}&search=${encodeURIComponent(search)}&categories=${encodeURIComponent(categoryParam)}&p=1`;
+                    url = `./?page=packages&sort=${type}&search=${encodeURIComponent(search)}&p=1`;
+                    if (selectedCategories.length > 0) {
+                        url += `&categories=${encodeURIComponent(categoryParam)}`;
+                    }
                 }
                 window.location.href = url;
             }
@@ -78,9 +84,21 @@
                 const search = document.getElementById('search-input').value;
                 const sort = '<?php echo isset($_GET['sort']) ? $_GET['sort'] : 'recommended'; ?>';
                 const selectedCategories = Array.from(document.querySelectorAll('.category-filter:checked')).map(cb => cb.value);
-                const categoryParam = selectedCategories.join(',');
 
-                let url = `./?page=packages&sort=${sort}&search=${encodeURIComponent(search)}&categories=${encodeURIComponent(categoryParam)}&p=1`;
+                let url = `./?page=packages&p=1`;
+
+                if (sort !== 'recommended') {
+                    url += `&sort=${sort}`;
+                }
+
+                if (search) {
+                    url += `&search=${encodeURIComponent(search)}`;
+                }
+
+                if (selectedCategories.length > 0) {
+                    url += `&categories=${encodeURIComponent(selectedCategories.join(','))}`;
+                }
+
                 window.location.href = url;
             }
 
@@ -88,9 +106,21 @@
                 const selectedCategories = Array.from(document.querySelectorAll('.category-filter:checked')).map(cb => cb.value);
                 const search = document.getElementById('search-input').value;
                 const sort = '<?php echo isset($_GET['sort']) ? $_GET['sort'] : 'recommended'; ?>';
-                const categoryParam = selectedCategories.join(',');
 
-                let url = `./?page=packages&sort=${sort}&search=${encodeURIComponent(search)}&categories=${encodeURIComponent(categoryParam)}&p=1`;
+                let url = `./?page=packages&p=1`;
+
+                if (sort !== 'recommended') {
+                    url += `&sort=${sort}`;
+                }
+
+                if (search) {
+                    url += `&search=${encodeURIComponent(search)}`;
+                }
+
+                if (selectedCategories.length > 0) {
+                    url += `&categories=${encodeURIComponent(selectedCategories.join(','))}`;
+                }
+
                 window.location.href = url;
             }
 
@@ -158,23 +188,122 @@
                         LIMIT $offset, $items_per_page
                     ";
                     break;
-                default:
-                    $query = "SELECT * FROM packages WHERE status = 1";
-                    if (!empty($search_query)) {
-                        $query .= " AND title LIKE '%" . $conn->real_escape_string($search_query) . "%'";
+                default: // 'recommended'
+                    $user_preference = isset($_SESSION['userdata']['preference']) ? $_SESSION['userdata']['preference'] : '';
+
+                    if (!empty($user_preference) && !empty($search_query)) {
+                        // If there's a search query, prioritize that but still respect preferences
+                        $query = "SELECT * FROM packages WHERE status = 1 AND title LIKE '%" . $conn->real_escape_string($search_query) . "%'";
+                        $query .= $category_sql;
+
+                        // Preferences as a secondary sorting factor
+                        $preferences = explode(',', $user_preference);
+                        $preference_conditions = [];
+                        foreach ($preferences as $pref) {
+                            $pref = $conn->real_escape_string(trim($pref));
+                            $preference_conditions[] = "FIND_IN_SET('$pref', category)";
+                        }
+
+                        if (!empty($preference_conditions)) {
+                            $query .= " ORDER BY (" . implode(" OR ", $preference_conditions) . ") DESC, RAND()";
+                        } else {
+                            $query .= " ORDER BY RAND()";
+                        }
+
+                        $query .= " LIMIT $offset, $items_per_page";
+                    } else if (!empty($user_preference)) {
+                        // Use user preferences for sorting
+                        $preferences = explode(',', $user_preference);
+                        $preference_conditions = [];
+                        $displayed_ids = [];
+                        $packages = [];
+
+                        // Step 1: First fetch packages that match user preferences
+                        $pref_conditions = [];
+                        foreach ($preferences as $pref) {
+                            $pref = $conn->real_escape_string(trim($pref));
+                            $pref_conditions[] = "FIND_IN_SET('$pref', category)";
+                        }
+
+                        $base_query = "SELECT * FROM packages WHERE status = 1";
+                        $base_query .= $category_sql;
+
+                        if (!empty($pref_conditions)) {
+                            $preferred_query = $base_query . " AND (" . implode(" OR ", $pref_conditions) . ")";
+                            $preferred_query .= " LIMIT $offset, $items_per_page";
+
+                            $result = $conn->query($preferred_query);
+                            if ($result && $result->num_rows > 0) {
+                                while ($row = $result->fetch_assoc()) {
+                                    $packages[] = $row;
+                                    $displayed_ids[] = $row['id'];
+                                }
+                            }
+
+                            // Step 2: If we don't have enough packages, fill with remaining packages
+                            if (count($packages) < $items_per_page) {
+                                $remaining = $items_per_page - count($packages);
+                                $exclude_ids = !empty($displayed_ids) ? implode(",", array_map('intval', $displayed_ids)) : "";
+
+                                $fallback_query = $base_query;
+                                if (!empty($exclude_ids)) {
+                                    $fallback_query .= " AND id NOT IN ($exclude_ids)";
+                                }
+                                $fallback_query .= " ORDER BY RAND() LIMIT $remaining";
+
+                                $fallback_result = $conn->query($fallback_query);
+                                if ($fallback_result && $fallback_result->num_rows > 0) {
+                                    while ($row = $fallback_result->fetch_assoc()) {
+                                        $packages[] = $row;
+                                    }
+                                }
+                            }
+                        } else {
+                            // No user preferences found, just get random packages
+                            $query = $base_query . " ORDER BY RAND() LIMIT $offset, $items_per_page";
+                            $result = $conn->query($query);
+                            if ($result && $result->num_rows > 0) {
+                                while ($row = $result->fetch_assoc()) {
+                                    $packages[] = $row;
+                                }
+                            }
+                        }
+                    } else {
+                        // No user preferences set, just show random packages
+                        $query = "SELECT * FROM packages WHERE status = 1";
+                        if (!empty($search_query)) {
+                            $query .= " AND title LIKE '%" . $conn->real_escape_string($search_query) . "%'";
+                        }
+                        $query .= $category_sql;
+                        $query .= " ORDER BY RAND() LIMIT $offset, $items_per_page";
+
+                        $packages = [];
+                        $result = $conn->query($query);
+                        if ($result && $result->num_rows > 0) {
+                            while ($row = $result->fetch_assoc()) {
+                                $packages[] = $row;
+                            }
+                        }
                     }
-                    $query .= $category_sql;
-                    $query .= " ORDER BY RAND() LIMIT $offset, $items_per_page";
                     break;
             }
 
-            $packages = $conn->query($query);
+            // For non-recommended sorts, we use the standard querying method
+            if ($sort_type != 'recommended' || (empty($user_preference) && empty($packages))) {
+                $packages = [];
+                $result = $conn->query($query);
+                if ($result && $result->num_rows > 0) {
+                    while ($row = $result->fetch_assoc()) {
+                        $packages[] = $row;
+                    }
+                }
+            }
 
-            if ($packages->num_rows == 0) {
+            if (empty($packages)) {
                 echo '<p class="text-center text-white">No destinations found matching your search.</p>';
             }
 
-            while ($row = $packages->fetch_assoc()) :
+            foreach ($packages as $row) :
                 $cover = '';
                 if (is_dir(base_app . 'uploads/package_' . $row['id'])) {
                     $img = scandir(base_app . 'uploads/package_' . $row['id']);
@@ -223,7 +352,7 @@
                         </div>
                     </div>
                 </div>
-            <?php endwhile; ?>
+            <?php endforeach; ?>
         </div>
 
         <!-- Pagination -->
@@ -232,7 +361,7 @@
                 <ul class="pagination">
                     <?php if ($current_page > 1) : ?>
                         <li class="page-item">
-                            <a class="page-link" href="./?page=packages&sort=<?php echo $sort_type ?>&search=<?php echo urlencode($search_query) ?>&categories=<?php echo urlencode(implode(',', $category_filter)) ?>&p=<?php echo $current_page - 1 ?>" aria-label="Previous">
+                            <a class="page-link" href="./?page=packages<?php echo isset($_GET['sort']) ? '&sort=' . $sort_type : ''; ?><?php echo !empty($search_query) ? '&search=' . urlencode($search_query) : ''; ?><?php echo !empty($category_filter) ? '&categories=' . urlencode(implode(',', $category_filter)) : ''; ?>&p=<?php echo $current_page - 1 ?>" aria-label="Previous">
                                 <span aria-hidden="true">«</span>
                             </a>
                         </li>
@@ -250,13 +379,13 @@
                     for ($i = $start_page; $i <= $end_page; $i++) :
                     ?>
                         <li class="page-item <?php echo $i == $current_page ? 'active' : '' ?>">
-                            <a class="page-link" href="./?page=packages&sort=<?php echo $sort_type ?>&search=<?php echo urlencode($search_query) ?>&categories=<?php echo urlencode(implode(',', $category_filter)) ?>&p=<?php echo $i ?>"><?php echo $i ?></a>
+                            <a class="page-link" href="./?page=packages<?php echo isset($_GET['sort']) ? '&sort=' . $sort_type : ''; ?><?php echo !empty($search_query) ? '&search=' . urlencode($search_query) : ''; ?><?php echo !empty($category_filter) ? '&categories=' . urlencode(implode(',', $category_filter)) : ''; ?>&p=<?php echo $i ?>"><?php echo $i ?></a>
                         </li>
                     <?php endfor; ?>
 
                     <?php if ($current_page < $total_pages) : ?>
                         <li class="page-item">
-                            <a class="page-link" href="./?page=packages&sort=<?php echo $sort_type ?>&search=<?php echo urlencode($search_query) ?>&categories=<?php echo urlencode(implode(',', $category_filter)) ?>&p=<?php echo $current_page + 1 ?>" aria-label="Next">
+                            <a class="page-link" href="./?page=packages<?php echo isset($_GET['sort']) ? '&sort=' . $sort_type : ''; ?><?php echo !empty($search_query) ? '&search=' . urlencode($search_query) : ''; ?><?php echo !empty($category_filter) ? '&categories=' . urlencode(implode(',', $category_filter)) : ''; ?>&p=<?php echo $current_page + 1 ?>" aria-label="Next">
                                 <span aria-hidden="true">»</span>
                             </a>
                         </li>

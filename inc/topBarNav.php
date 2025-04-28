@@ -1,4 +1,10 @@
 <!-- Navigation -->
+<style>
+  #mainNav {
+    background-color: #333;
+
+  }
+</style>
 <nav class="navbar navbar-expand-lg navbar-dark fixed-top navbar-shrink" id="mainNav">
   <div class="container-fluid">
     <a class="navbar-brand" href="#page-top"><span class="text-warning">Tupi Tourism Information System</span></a>

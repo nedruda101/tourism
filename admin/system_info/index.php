@@ -53,14 +53,31 @@
 					<img src="<?php echo validate_image($_settings->info('logo')) ?>" alt="" id="cimg" class="img-fluid img-thumbnail">
 				</div>
 				<div class="form-group">
-					<label for="" class="control-label">Website Cover</label>
+					<label for="" class="control-label">Website Cover Images (For Carousel)</label>
 					<div class="custom-file">
-						<input type="file" class="custom-file-input rounded-circle" id="customFile" name="cover" onchange="displayImg2(this,$(this))">
-						<label class="custom-file-label" for="customFile">Choose file</label>
+						<input type="file" class="custom-file-input" id="coverInput" name="cover[]" multiple onchange="displayCovers(this,$(this))">
+						<label class="custom-file-label" for="coverInput">Choose files</label>
 					</div>
 				</div>
-				<div class="form-group d-flex justify-content-center">
-					<img src="<?php echo validate_image($_settings->info('cover')) ?>" alt="" id="cimg2" class="img-fluid img-thumbnail">
+				<div class="form-group d-flex justify-content-center flex-wrap" id="cover-previews">
+					<?php
+					$covers = $_settings->info('cover') ? json_decode($_settings->info('cover'), true) : [];
+					if (is_array($covers) && !empty($covers)) :
+						foreach ($covers as $cover) :
+					?>
+							<div class="cover-preview-container m-2">
+								<img src="<?php echo validate_image($cover) ?>" alt="" class="img-fluid img-thumbnail" style="height: 150px;">
+							</div>
+						<?php
+						endforeach;
+					else :
+						// Handle case where cover is still a single image
+						$single_cover = $_settings->info('cover');
+						if ($single_cover) :
+						?>
+							<img src="<?php echo validate_image($single_cover) ?>" alt="" id="cimg2" class="img-fluid img-thumbnail">
+					<?php endif;
+					endif; ?>
 				</div>
 			</form>
 		</div>
@@ -75,6 +92,29 @@
 	</div>
 </div>
 <script>
+	function displayCovers(input, _this) {
+		if (input.files && input.files.length > 0) {
+			// Display file count in label
+			_this.siblings('.custom-file-label').html(input.files.length + ' files selected');
+
+			// Clear existing preview
+			$('#cover-previews').html('');
+
+			// Create preview for each file
+			for (let i = 0; i < input.files.length; i++) {
+				let reader = new FileReader();
+				reader.onload = function(e) {
+					$('#cover-previews').append(
+						'<div class="cover-preview-container m-2">' +
+						'<img src="' + e.target.result + '" class="img-fluid img-thumbnail" style="height: 150px;">' +
+						'</div>'
+					);
+				}
+				reader.readAsDataURL(input.files[i]);
+			}
+		}
+	}
+
 	function displayImg(input, _this) {
 		if (input.files && input.files[0]) {
 			var reader = new FileReader();

@@ -22,7 +22,7 @@ class Master extends DBConnection
 		extract($_POST);
 		$data = "";
 
-		// Process other fields
+
 		foreach ($_POST as $k => $v) {
 			if (!in_array($k, array('id', 'description', 'category'))) {
 				if (!empty($data)) $data .= ",";
@@ -30,20 +30,20 @@ class Master extends DBConnection
 			}
 		}
 
-		// Process description field
+
 		if (isset($_POST['description'])) {
 			if (!empty($data)) $data .= ",";
 			$data .= " `description`='" . addslashes(htmlentities($description)) . "' ";
 		}
 
-		// Process categories
+
 		if (isset($_POST['category']) && !empty($_POST['category'])) {
-			$categories = implode(",", $_POST['category']); // Convert array of categories to a comma-separated string
+			$categories = implode(",", $_POST['category']);
 			if (!empty($data)) $data .= ",";
-			$data .= " `category`='{$categories}' "; // Assuming 'category' is a column in your table
+			$data .= " `category`='{$categories}' ";
 		}
 
-		// Insert or update package
+
 		if (empty($id)) {
 			$sql = "INSERT INTO `packages` set {$data} ";
 			$save = $this->conn->query($sql);
@@ -53,7 +53,7 @@ class Master extends DBConnection
 			$save = $this->conn->query($sql);
 		}
 
-		// Handle image uploads
+
 		if ($save) {
 			if (isset($_FILES['img']) && count($_FILES['img']['tmp_name']) > 0) {
 				if (!is_dir(base_app . 'uploads/package_' . $id)) {
@@ -66,7 +66,7 @@ class Master extends DBConnection
 				}
 			}
 
-			// Handle video uploads
+
 			if (isset($_FILES['video']) && $_FILES['video']['error'] == 0) {
 				$video_path = 'uploads/video_' . $id . '/';
 				if (!is_dir(base_app . $video_path)) {
@@ -81,10 +81,10 @@ class Master extends DBConnection
 				}
 			}
 
-			// Respond with success
+
 			$resp['status'] = 'success';
 		} else {
-			// Error occurred
+
 			$resp['status'] = 'failed';
 			$resp['err'] = $this->conn->error . "[{$sql}]";
 		}
@@ -256,7 +256,7 @@ class Master extends DBConnection
 		extract($_POST);
 		$data = "";
 
-		// Handle password change
+
 		if (!empty($password)) {
 			$_POST['password'] = md5($password);
 			if (md5($cpassword) != $this->settings->userdata('password')) {
@@ -266,14 +266,13 @@ class Master extends DBConnection
 			}
 		}
 
-		// Ensure preferences are processed even if nothing is selected
+
 		if (isset($_POST['preference']) && is_array($_POST['preference'])) {
 			$_POST['preference'] = implode(',', $_POST['preference']);
 		} else {
-			$_POST['preference'] = ''; // No preferences selected
+			$_POST['preference'] = '';
 		}
 
-		// Check for unique username
 		$check = $this->conn->query("SELECT * FROM `users` WHERE `username`='{$username}' AND `id` != $id")->num_rows;
 		if ($check > 0) {
 			$resp['status'] = 'failed';
@@ -281,7 +280,7 @@ class Master extends DBConnection
 			return json_encode($resp);
 		}
 
-		// Prepare data for update
+
 		foreach ($_POST as $k => $v) {
 			if ($k == 'cpassword' || ($k == 'password' && empty($v)))
 				continue;
@@ -290,7 +289,6 @@ class Master extends DBConnection
 			$data .= " `{$k}`='{$v}' ";
 		}
 
-		// Execute update query
 		$save = $this->conn->query("UPDATE `users` SET $data WHERE id = $id ");
 		if ($save) {
 			foreach ($_POST as $k => $v) {

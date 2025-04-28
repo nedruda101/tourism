@@ -1,20 +1,138 @@
+<?php
+$covers = $_settings->info('cover') ? json_decode($_settings->info('cover'), true) : [];
+?>
 <style>
+	/* Masthead settings */
 	header.masthead {
-		background-image: url('<?php echo validate_image($_settings->info('cover')) ?>') !important;
+		position: relative;
+		width: 100%;
+		height: 90vh;
+
+		overflow: hidden;
+		display: flex;
+		justify-content: center;
+		align-items: center;
+		margin-top: 90px;
+
 	}
 
+
+	#tourismCarousel {
+		position: absolute;
+		top: 0;
+		left: 0;
+		width: 100%;
+		height: 100%;
+
+		object-fit: cover;
+
+	}
+
+	/* Styling for content inside the masthead */
 	header.masthead .container {
-		background: #0000006b;
+		position: relative;
+		z-index: 10;
+
+		background: rgba(0, 0, 0, 0.5);
+
+		padding: 2rem;
+		border-radius: 10px;
+	}
+
+	.masthead-heading {
+		font-size: 3rem;
+		font-weight: 700;
+		margin-bottom: 2rem;
+		color: white;
+	}
+
+	.masthead-subheading {
+		font-size: 1.5rem;
+		color: #f8f9fa;
+	}
+
+	/* Styling for the custom navigation (bottom) */
+	.carousel-control-bottom {
+		position: absolute;
+		bottom: 20px;
+		width: 100%;
+		text-align: center;
+	}
+
+	.carousel-control-bottom a {
+		color: white;
+		font-size: 1.25rem;
+		background-color: rgba(0, 0, 0, 0.6);
+		padding: 1rem 2rem;
+		border-radius: 30px;
+		text-decoration: none;
+	}
+
+	.carousel-control-bottom a:hover {
+		background-color: rgba(0, 0, 0, 0.8);
+	}
+
+	#home {
+		padding-top: 117px;
 	}
 </style>
-<!-- Masthead-->
+
+<!-- Masthead -->
 <header class="masthead">
-	<div class="container">
-		<div class="masthead-subheading"></div>
+
+	<div id="tourismCarousel" class="carousel slide carousel-fade" data-ride="carousel" data-interval="3000" data-wrap="true">
+
+		<ol class="carousel-indicators">
+			<?php
+			if (is_array($covers) && !empty($covers)) :
+				foreach ($covers as $key => $cover) :
+			?>
+					<li data-target="#tourismCarousel" data-slide-to="<?php echo $key ?>" <?php echo ($key == 0) ? 'class="active"' : '' ?>></li>
+			<?php
+				endforeach;
+			endif;
+			?>
+		</ol>
+		<div class="carousel-inner">
+			<?php
+			if (is_array($covers) && !empty($covers)) :
+				foreach ($covers as $key => $cover) :
+			?>
+					<div class="carousel-item <?php echo ($key == 0) ? 'active' : '' ?>">
+						<img src="<?php echo validate_image($cover) ?>" class="d-block w-100" alt="Tourism Spot" style="height: 100%; object-fit: cover;">
+					</div>
+				<?php
+				endforeach;
+			else :
+
+				$single_cover = $_settings->info('cover');
+				if ($single_cover) :
+				?>
+					<div class="carousel-item active">
+						<img src="<?php echo validate_image($single_cover) ?>" class="d-block w-100" alt="Tourism Spot" style="height: 100%; object-fit: cover;">
+					</div>
+			<?php
+				endif;
+			endif;
+			?>
+		</div>
+	</div>
+
+	<!-- Centered Content -->
+	<div class="container text-center">
+		<div class="masthead-subheading">Welcome to Our Tourism Portal</div>
 		<div class="masthead-heading text-uppercase">Discover Attractions & Local Insights</div>
-		<a class="btn btn-primary btn-xl text-uppercase" href="#home">View Tourist Spot</a>
+		<a class="btn btn-primary btn-xl text-uppercase" href="#home">View Tourist Spots</a>
+	</div>
+
+
+	<div class="carousel-control-bottom">
+		<a href="#tourismCarousel" role="button" data-slide="next">Explore More</a>
 	</div>
 </header>
+
+
+
 <!-- Services-->
 <section class="page-section bg-dark" id="home">
 	<div class="container">
