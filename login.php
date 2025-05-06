@@ -197,10 +197,15 @@
                 },
                 success: function(resp) {
                     if (typeof resp == 'object' && resp.status == 'success') {
+                        // Show success message but don't reload
                         alert_toast("Account successfully registered", 'success');
+                        // Reset the form instead of reloading
+                        $('#registration')[0].reset();
+                        // Optionally switch back to login view
                         setTimeout(function() {
-                            location.reload();
+                            shiftToLogin();
                         }, 2000);
+                        end_loader();
                     } else if (resp.status == 'failed' && !!resp.msg) {
                         var _err_el = $('<div>');
                         _err_el.addClass("alert alert-danger err-msg").text(resp.msg);

@@ -20,6 +20,8 @@
             include 'policy.php';
         } elseif ($page == 'login') {
             include 'login.php';
+        } elseif ($page == 'contacts') {
+            include 'contacts.php';
         } elseif (is_dir($page)) {
             include $page . '/index.php';
         } else {

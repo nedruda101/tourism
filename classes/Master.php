@@ -505,6 +505,93 @@ class Master extends DBConnection
 
 		return $comments;
 	}
+	function save_emergency_contact()
+	{
+		extract($_POST);
+		$resp = [];
+
+
+		$fields = ['name', 'phone_number', 'address', 'description', 'lat', 'lng', 'status'];
+		$data = [];
+		foreach ($fields as $field) {
+			$data[$field] = isset($_POST[$field]) ? $_POST[$field] : '';
+		}
+
+		foreach ($data as $key => $value) {
+			$data[$key] = $this->conn->real_escape_string($value);
+		}
+
+
+		if (empty($id)) {
+
+			$sql = "INSERT INTO `emergency_contacts` (`name`, `phone_number`, `address`, `description`, `lat`, `lng`, `status`) VALUES (?, ?, ?, ?, ?, ?, ?)";
+			$stmt = $this->conn->prepare($sql);
+			if ($stmt === false) {
+				$resp['status'] = 'failed';
+				$resp['msg'] = "An error occurred: " . $this->conn->error;
+				echo json_encode($resp);
+				exit;
+			}
+			$stmt->bind_param("sssssss", $data['name'], $data['phone_number'], $data['address'], $data['description'], $data['lat'], $data['lng'], $data['status']);
+		} else {
+
+			$sql = "UPDATE `emergency_contacts` SET `name`=?, `phone_number`=?, `address`=?, `description`=?, `lat`=?, `lng`=?, `status`=? WHERE `id`=?";
+			$stmt = $this->conn->prepare($sql);
+			if ($stmt === false) {
+				$resp['status'] = 'failed';
+				$resp['msg'] = "An error occurred: " . $this->conn->error;
+				echo json_encode($resp);
+				exit;
+			}
+			$stmt->bind_param("sssssssi", $data['name'], $data['phone_number'], $data['address'], $data['description'], $data['lat'], $data['lng'], $data['status'], $id);
+		}
+
+		$save = $stmt->execute();
+
+		if ($save) {
+			$resp['status'] = 'success';
+			if (empty($id)) {
+				$resp['msg'] = "Emergency contact successfully added.";
+				$this->settings->set_flashdata('success', "Emergency contact successfully added.");
+			} else {
+				$resp['msg'] = "Emergency contact successfully updated.";
+				$this->settings->set_flashdata('success', "Emergency contact successfully updated.");
+			}
+		} else {
+			$resp['status'] = 'failed';
+			$resp['msg'] = "An error occurred: " . $stmt->error;
+		}
+
+		$stmt->close();
+		echo json_encode($resp);
+		exit;
+	}
+
+	function delete_emergency_contact()
+	{
+		extract($_POST);
+		$del = $this->conn->query("DELETE FROM `emergency_contacts` where id = '{$id}'");
+		if ($del) {
+			$resp['status'] = 'success';
+			$this->settings->set_flashdata('success', "Emergency contact successfully deleted.");
+		} else {
+			$resp['status'] = 'failed';
+			$resp['error'] = $this->conn->error;
+		}
+		return json_encode($resp);
+	}
+
+	function get_emergency_contacts()
+	{
+		$query = $this->conn->query("SELECT * FROM `emergency_contacts` WHERE status = 1 ORDER BY name ASC");
+		$contacts = array();
+
+		while ($row = $query->fetch_assoc()) {
+			$contacts[] = $row;
+		}
+
+		return $contacts;
+	}
 }
 
 $Master = new Master();
@@ -528,6 +615,12 @@ switch ($action) {
 		break;
 	case 'update_book_status':
 		echo $Master->update_book_status();
+		break;
+	case 'save_emergency_contact':
+		echo $Master->save_emergency_contact();
+		break;
+	case 'delete_emergency_contact':
+		echo $Master->delete_emergency_contact();
 		break;
 	case 'register':
 		echo $Master->register();

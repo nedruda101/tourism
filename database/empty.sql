@@ -1,17 +1,15 @@
-
 -- phpMyAdmin SQL Dump
 -- version 5.2.1
 -- https://www.phpmyadmin.net/
 --
 -- Host: localhost
--- Generation Time: Apr 28, 2025 at 01:02 PM
+-- Generation Time: May 06, 2025 at 03:25 PM
 -- Server version: 10.4.28-MariaDB
 -- PHP Version: 8.2.4
 
 SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
 START TRANSACTION;
 SET time_zone = "+00:00";
-
 
 /*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
 /*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
@@ -37,6 +35,24 @@ CREATE TABLE `comments` (
   `parent_id` int(30) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `emergency_contacts`
+--
+
+CREATE TABLE `emergency_contacts` (
+  `id` int(30) NOT NULL,
+  `name` varchar(255) NOT NULL,
+  `phone_number` varchar(255) NOT NULL,
+  `address` text DEFAULT NULL,
+  `lat` decimal(10,8) DEFAULT NULL,
+  `lng` decimal(11,8) DEFAULT NULL,
+  `description` text DEFAULT NULL,
+  `status` tinyint(1) NOT NULL DEFAULT 1 COMMENT '0=inactive, 1=active',
+  `date_created` datetime NOT NULL DEFAULT current_timestamp(),
+  `date_updated` datetime DEFAULT NULL ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
 
@@ -54,7 +70,6 @@ CREATE TABLE `inquiry` (
   `date_created` datetime NOT NULL DEFAULT current_timestamp(),
   `video` varchar(255) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
 
 -- --------------------------------------------------------
 
@@ -76,6 +91,25 @@ CREATE TABLE `location` (
   `category` varchar(255) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+-- --------------------------------------------------------
+
+--
+-- Stand-in structure for view `packages`
+-- (See below for the actual view)
+--
+CREATE TABLE `packages` (
+`id` int(30)
+,`title` text
+,`tour_location` text
+,`cost` text
+,`description` text
+,`upload_path` text
+,`status` tinyint(4)
+,`date_created` datetime
+,`opening_hours` varchar(50)
+,`upload_path_video` text
+,`category` varchar(255)
+);
 
 -- --------------------------------------------------------
 
@@ -92,7 +126,6 @@ CREATE TABLE `rate_review` (
   `date_created` datetime NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
-
 -- --------------------------------------------------------
 
 --
@@ -104,7 +137,6 @@ CREATE TABLE `system_info` (
   `meta_field` text NOT NULL,
   `meta_value` text NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
 
 -- --------------------------------------------------------
 
@@ -126,7 +158,6 @@ CREATE TABLE `users` (
   `preference` text DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
-
 -- --------------------------------------------------------
 
 --
@@ -134,21 +165,7 @@ CREATE TABLE `users` (
 --
 DROP TABLE IF EXISTS `packages`;
 
-CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `packages` AS 
-SELECT `location`.`id` AS `id`, 
-       `location`.`title` AS `title`, 
-       `location`.`tour_location` AS `tour_location`, 
-       `location`.`cost` AS `cost`, 
-       `location`.`description ` AS `description`, 
-       `location`.`upload_path` AS `upload_path`, 
-       `location`.`status` AS `status`, 
-       `location`.`date_created` AS `date_created`, 
-       `location`.`opening_hours` AS `opening_hours`, 
-       `location`.`upload_path_video` AS `upload_path_video`, 
-       `location`.`category` AS `category` 
-FROM `location`;
-
--- --------------------------------------------------------
+CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `packages`  AS SELECT `location`.`id` AS `id`, `location`.`title` AS `title`, `location`.`tour_location` AS `tour_location`, `location`.`cost` AS `cost`, `location`.`description` AS `description`, `location`.`upload_path` AS `upload_path`, `location`.`status` AS `status`, `location`.`date_created` AS `date_created`, `location`.`opening_hours` AS `opening_hours`, `location`.`upload_path_video` AS `upload_path_video`, `location`.`category` AS `category` FROM `location` ;
 
 --
 -- Indexes for dumped tables
@@ -158,6 +175,12 @@ FROM `location`;
 -- Indexes for table `comments`
 --
 ALTER TABLE `comments`
+  ADD PRIMARY KEY (`id`);
+
+--
+-- Indexes for table `emergency_contacts`
+--
+ALTER TABLE `emergency_contacts`
   ADD PRIMARY KEY (`id`);
 
 --
@@ -198,38 +221,43 @@ ALTER TABLE `users`
 -- AUTO_INCREMENT for table `comments`
 --
 ALTER TABLE `comments`
-  MODIFY `id` int(30) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=22;
+  MODIFY `id` int(30) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `emergency_contacts`
+--
+ALTER TABLE `emergency_contacts`
+  MODIFY `id` int(30) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `inquiry`
 --
 ALTER TABLE `inquiry`
-  MODIFY `id` int(30) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=18;
+  MODIFY `id` int(30) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `location`
 --
 ALTER TABLE `location`
-  MODIFY `id` int(30) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=16;
+  MODIFY `id` int(30) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `rate_review`
 --
 ALTER TABLE `rate_review`
-  MODIFY `id` int(30) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=21;
+  MODIFY `id` int(30) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `system_info`
 --
 ALTER TABLE `system_info`
-  MODIFY `id` int(30) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=19;
+  MODIFY `id` int(30) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `users`
 --
 ALTER TABLE `users`
-  MODIFY `id` int(50) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=17;
-
+  MODIFY `id` int(50) NOT NULL AUTO_INCREMENT;
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;

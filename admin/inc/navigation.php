@@ -75,6 +75,14 @@
                   </p>
                 </a>
               </li>
+              <li class="nav-item dropdown">
+                <a href="<?php echo base_url ?>admin/?page=emergency" class="nav-link nav-emergency">
+                  <i class="nav-icon fas fa-cogs"></i>
+                  <p>
+                    Emergency Contacts
+                  </p>
+                </a>
+              </li>
             </ul>
           </nav>
           <!-- /.sidebar-menu -->

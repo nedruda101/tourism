@@ -21,6 +21,7 @@
         <li class="nav-item"><a class="nav-link" href="<?php echo $page != 'home' ? './' : ''  ?>#about">About</a></li>
         <li class="nav-item"><a class="nav-link" href="<?php echo $page != 'home' ? './' : ''  ?>#contact">Contact</a></li>
         <li class="nav-item"><a class="nav-link" href="./?page=policy">Policy</a></li>
+        <li class="nav-item"><a class="nav-link" href="./?page=contacts">Helpline</a></li>
 
         <?php if (isset($_SESSION['userdata'])) : ?>
           <li class="nav-item"><a class="nav-link" href="./?page=edit_account"><i class="fa fa-user"></i> Hi, <?php echo $_settings->userdata('firstname'); ?>!</a></li>
