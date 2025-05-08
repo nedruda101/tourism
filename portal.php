@@ -147,19 +147,30 @@ $covers = $_settings->info('cover') ? json_decode($_settings->info('cover'), tru
 			$displayed_ids = [];
 			$packages = [];
 
-			// Step 1: Get preference-based packages
 			if (!empty($user_preference)) {
-				$preferences = explode(',', $user_preference);
-				$likes = [];
+				// Step 1: Get category IDs matching user preference names
+				$preference_names = array_map('trim', explode(',', $user_preference));
+				$escaped_names = array_map(function ($name) use ($conn) {
+					return "'" . $conn->real_escape_string($name) . "'";
+				}, $preference_names);
+				$name_list = implode(',', $escaped_names);
 
-				foreach ($preferences as $pref) {
-					$pref = $conn->real_escape_string(trim($pref));
-					$likes[] = "`category` LIKE '%$pref%'";
+				$cat_res = $conn->query("SELECT id FROM categories WHERE name IN ($name_list)");
+				$pref_ids = [];
+				while ($row = $cat_res->fetch_assoc()) {
+					$pref_ids[] = $row['id'];
 				}
 
-				if (!empty($likes)) {
-					$preferred_query = "SELECT * FROM `packages` WHERE " . implode(" OR ", $likes) . " LIMIT $max_display";
-					$result = $conn->query($preferred_query);
+				// Step 2: Fetch packages matching any preference category ID
+				if (!empty($pref_ids)) {
+					$conditions = [];
+					foreach ($pref_ids as $cat_id) {
+						$conditions[] = "JSON_CONTAINS(category, '\"$cat_id\"')";
+					}
+					$where_clause = implode(" OR ", $conditions);
+					$pref_query = "SELECT * FROM packages WHERE $where_clause LIMIT $max_display";
+					$result = $conn->query($pref_query);
+
 					if ($result && $result->num_rows > 0) {
 						while ($row = $result->fetch_assoc()) {
 							$packages[] = $row;
@@ -168,45 +179,37 @@ $covers = $_settings->info('cover') ? json_decode($_settings->info('cover'), tru
 					}
 				}
 
-				// Step 2: Fill with random packages if less than $max_display
+				// Step 3: Fill up with random packages if needed
 				$remaining = $max_display - count($packages);
 				if ($remaining > 0) {
-					$exclude_ids = implode(",", array_map('intval', $displayed_ids));
-					$fallback_query = "SELECT * FROM `packages` " . (!empty($exclude_ids) ? "WHERE `id` NOT IN ($exclude_ids)" : "") . " ORDER BY RAND() LIMIT $remaining";
-					$fallback_result = $conn->query($fallback_query);
-					if ($fallback_result && $fallback_result->num_rows > 0) {
-						while ($row = $fallback_result->fetch_assoc()) {
-							$packages[] = $row;
-						}
-					}
-				}
-			} else {
-				// No preferences? Just show 6 random
-				$result = $conn->query("SELECT * FROM `packages` ORDER BY RAND() LIMIT $max_display");
-				if ($result && $result->num_rows > 0) {
-					while ($row = $result->fetch_assoc()) {
+					$exclude = !empty($displayed_ids) ? "WHERE id NOT IN (" . implode(',', $displayed_ids) . ")" : "";
+					$fallback = $conn->query("SELECT * FROM packages $exclude ORDER BY RAND() LIMIT $remaining");
+					while ($row = $fallback->fetch_assoc()) {
 						$packages[] = $row;
 					}
 				}
+			} else {
+				// No preference? Show 6 random
+				$res = $conn->query("SELECT * FROM packages ORDER BY RAND() LIMIT $max_display");
+				while ($row = $res->fetch_assoc()) {
+					$packages[] = $row;
+				}
 			}
 
-			// Step 3: Display the packages
+			// Step 4: Display Packages
 			foreach ($packages as $row) :
-				// Cover image
 				$cover = '';
-				$packageDir = base_app . 'uploads/package_' . $row['id'];
-				if (is_dir($packageDir)) {
-					$img = array_values(array_diff(scandir($packageDir), ['.', '..']));
-					if (!empty($img)) {
-						$cover = 'uploads/package_' . $row['id'] . '/' . $img[0];
+				$package_dir = base_app . 'uploads/package_' . $row['id'];
+				if (is_dir($package_dir)) {
+					$imgs = array_values(array_diff(scandir($package_dir), ['.', '..']));
+					if (!empty($imgs)) {
+						$cover = 'uploads/package_' . $row['id'] . '/' . $imgs[0];
 					}
 				}
 
 				$row['description'] = strip_tags(stripslashes(html_entity_decode($row['description'])));
-
-				// Rating
 				$rate = 0;
-				$review = $conn->query("SELECT * FROM `rate_review` WHERE package_id='{$row['id']}'");
+				$review = $conn->query("SELECT * FROM rate_review WHERE package_id='{$row['id']}'");
 				$review_count = $review->num_rows;
 				while ($r = $review->fetch_assoc()) {
 					$rate += $r['rate'];
@@ -225,7 +228,7 @@ $covers = $_settings->info('cover') ? json_decode($_settings->info('cover'), tru
 								<?php if (isset($_SESSION['userdata'])) : ?>
 									<a href="./?page=view_package&id=<?php echo md5($row['id']) ?>" class="btn btn-sm btn-flat btn-warning">View Details <i class="fa fa-arrow-right"></i></a>
 								<?php else : ?>
-									<a href="javascript:void(0)" class="btn btn-sm btn-flat btn-warning" onclick="uni_modal('Login', 'login.php', 'large')">View Details <i class="fa fa-arrow-right"></i></a>
+									<a href="javascript:void(0)" class="btn btn-sm btn-flat btn-warning" onclick="uni_modal('Login','login.php','large')">View Details <i class="fa fa-arrow-right"></i></a>
 								<?php endif; ?>
 							</div>
 						</div>
@@ -233,13 +236,10 @@ $covers = $_settings->info('cover') ? json_decode($_settings->info('cover'), tru
 				</div>
 			<?php endforeach; ?>
 		</div>
-
-
-
-
-
 	</div>
 </section>
+
+
 <!-- About-->
 <section class="page-section" id="about">
 	<div class="container">

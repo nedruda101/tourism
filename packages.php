@@ -10,17 +10,46 @@
         $current_page = isset($_GET['p']) ? max(1, intval($_GET['p'])) : 1;
         $offset = ($current_page - 1) * $items_per_page;
         $search_query = isset($_GET['search']) ? trim($_GET['search']) : '';
-        $category_filter = isset($_GET['categories']) && !empty($_GET['categories']) ? explode(',', $_GET['categories']) : [];
+        $category_filter = isset($_GET['categories']) && !empty($_GET['categories']) ? array_filter(explode(',', $_GET['categories']), 'is_numeric') : [];
 
-        // Prepare category filter SQL condition
+        // Validate category IDs against categories table
+        $valid_category_ids = [];
+        $category_names = [];
+        $category_query = "SELECT id, name FROM categories";
+        $category_result = $conn->query($category_query);
+        if ($category_result) {
+            while ($row = $category_result->fetch_assoc()) {
+                $valid_category_ids[] = (string)$row['id'];
+                $category_names[$row['id']] = $row['name'];
+            }
+        }
+        $category_filter = array_intersect($category_filter, $valid_category_ids);
+
+        // Check if any packages match the selected categories
+        $category_match_check = false;
+        if (!empty($category_filter)) {
+            $check_conditions = [];
+            foreach ($category_filter as $cat_id) {
+                $safe_cat_id = $conn->real_escape_string($cat_id);
+                $check_conditions[] = "JSON_CONTAINS(category, '\"$safe_cat_id\"')";
+            }
+            $check_query = "SELECT COUNT(*) as count FROM location WHERE status = 1 AND (" . implode(" OR ", $check_conditions) . ")";
+            $check_result = $conn->query($check_query);
+            if ($check_result) {
+                $category_match_check = $check_result->fetch_assoc()['count'] > 0;
+            }
+            error_log("Category Match Check Query: $check_query");
+        }
+
         $category_sql = "";
         if (!empty($category_filter)) {
             $conditions = [];
-            foreach ($category_filter as $cat) {
-                $safe_cat = $conn->real_escape_string($cat);
-                $conditions[] = "FIND_IN_SET('$safe_cat', category)";
+            foreach ($category_filter as $cat_id) {
+                $safe_cat_id = $conn->real_escape_string($cat_id);
+                $conditions[] = "JSON_CONTAINS(category, '\"$safe_cat_id\"')";
             }
             $category_sql = " AND (" . implode(" OR ", $conditions) . ")";
+            error_log("Category SQL: $category_sql");
         }
         ?>
         <h2 class="text-center text-white mb-4">Featured Destinations</h2>
@@ -45,15 +74,22 @@
 
             <!-- Category Filters -->
             <div class="d-flex justify-content-right flex-wrap mt-3">
-                <label class="mx-2">
-                    <input type="checkbox" class="category-filter" value="nature_trip" <?php echo in_array('nature_trip', $category_filter) ? 'checked' : ''; ?>> Nature Trip
-                </label>
-                <label class="mx-2">
-                    <input type="checkbox" class="category-filter" value="food_trip" <?php echo in_array('food_trip', $category_filter) ? 'checked' : ''; ?>> Food Trip
-                </label>
-                <label class="mx-2">
-                    <input type="checkbox" class="category-filter" value="hiking" <?php echo in_array('hiking', $category_filter) ? 'checked' : ''; ?>> Hiking
-                </label>
+                <?php
+                $category_query = "SELECT id, name FROM categories ORDER BY name ASC";
+                $category_result = $conn->query($category_query);
+                if ($category_result && $category_result->num_rows > 0) {
+                    while ($category = $category_result->fetch_assoc()) {
+                        $cat_id = $category['id'];
+                        $cat_name = htmlspecialchars($category['name']);
+                        $checked = in_array((string)$cat_id, $category_filter) ? 'checked' : '';
+                        echo "<label class='mx-2'>";
+                        echo "<input type='checkbox' class='category-filter' value='$cat_id' $checked> $cat_name";
+                        echo "</label>";
+                    }
+                } else {
+                    echo "<p class='text-muted'>No categories available. Please add categories in the admin panel.</p>";
+                }
+                ?>
                 <button class="btn btn-sm btn-secondary ms-3" onclick="applyCategoryFilter()">Apply Filter</button>
             </div>
         </div>
@@ -140,10 +176,17 @@
                 $count_query .= " AND title LIKE '%" . $conn->real_escape_string($search_query) . "%'";
             }
             $count_query .= $category_sql;
+            error_log("Count Query: $count_query");
 
             $total_result = $conn->query($count_query);
-            $total_items = $total_result->fetch_assoc()['total'];
-            $total_pages = ceil($total_items / $items_per_page);
+            if (!$total_result) {
+                echo '<p class="text-center text-white">Error executing count query: ' . htmlspecialchars($conn->error) . '</p>';
+                $total_items = 0;
+                $total_pages = 0;
+            } else {
+                $total_items = $total_result->fetch_assoc()['total'];
+                $total_pages = ceil($total_items / $items_per_page);
+            }
 
             switch ($sort_type) {
                 case 'rating':
@@ -191,46 +234,43 @@
                 default: // 'recommended'
                     $user_preference = isset($_SESSION['userdata']['preference']) ? $_SESSION['userdata']['preference'] : '';
 
-                    if (!empty($user_preference) && !empty($search_query)) {
-                        // If there's a search query, prioritize that but still respect preferences
-                        $query = "SELECT * FROM packages WHERE status = 1 AND title LIKE '%" . $conn->real_escape_string($search_query) . "%'";
-                        $query .= $category_sql;
+                    if (!empty($user_preference)) {
+                        // Split user preferences into an array
+                        $preferences = array_map('trim', explode(',', $user_preference));
 
-                        // Preferences as a secondary sorting factor
-                        $preferences = explode(',', $user_preference);
-                        $preference_conditions = [];
-                        foreach ($preferences as $pref) {
-                            $pref = $conn->real_escape_string(trim($pref));
-                            $preference_conditions[] = "FIND_IN_SET('$pref', category)";
+                        // Fetch category IDs for the preference names
+                        $category_ids = [];
+                        if (!empty($preferences)) {
+                            $pref W_names = implode("','", array_map(array($conn, 'real_escape_string'), $preferences));
+                            $category_query = "SELECT id FROM categories WHERE name IN ('$pref_names')";
+                            $category_result = $conn->query($category_query);
+                            if ($category_result) {
+                                while ($row = $category_result->fetch_assoc()) {
+                                    $category_ids[] = $row['id'];
+                                }
+                            }
                         }
 
-                        if (!empty($preference_conditions)) {
-                            $query .= " ORDER BY (" . implode(" OR ", $preference_conditions) . ") DESC, RAND()";
-                        } else {
-                            $query .= " ORDER BY RAND()";
-                        }
-
-                        $query .= " LIMIT $offset, $items_per_page";
-                    } else if (!empty($user_preference)) {
-                        // Use user preferences for sorting
-                        $preferences = explode(',', $user_preference);
-                        $preference_conditions = [];
-                        $displayed_ids = [];
                         $packages = [];
+                        $displayed_ids = [];
 
-                        // Step 1: First fetch packages that match user preferences
-                        $pref_conditions = [];
-                        foreach ($preferences as $pref) {
-                            $pref = $conn->real_escape_string(trim($pref));
-                            $pref_conditions[] = "FIND_IN_SET('$pref', category)";
-                        }
-
+                        // Base query for packages
                         $base_query = "SELECT * FROM packages WHERE status = 1";
+                        if (!empty($search_query)) {
+                            $base_query .= " AND title LIKE '%" . $conn->real_escape_string($search_query) . "%'";
+                        }
                         $base_query .= $category_sql;
 
-                        if (!empty($pref_conditions)) {
-                            $preferred_query = $base_query . " AND (" . implode(" OR ", $pref_conditions) . ")";
+                        if (!empty($category_ids)) {
+                            // Step 1: Fetch packages that match user preferences
+                            $conditions = [];
+                            foreach ($category_ids as $cat_id) {
+                                $safe_cat_id = $conn->real_escape_string($cat_id);
+                                $conditions[] = "JSON_CONTAINS(category, '\"$safe_cat_id\"')";
+                            }
+                            $preferred_query = $base_query . " AND (" . implode(" OR ", $conditions) . ")";
                             $preferred_query .= " LIMIT $offset, $items_per_page";
+                            error_log("Preferred Query: $preferred_query");
 
                             $result = $conn->query($preferred_query);
                             if ($result && $result->num_rows > 0) {
@@ -240,27 +280,27 @@
                                 }
                             }
 
-                            // Step 2: If we don't have enough packages, fill with remaining packages
+                            // Step 2: If not enough packages, fill with remaining packages
                             if (count($packages) < $items_per_page) {
                                 $remaining = $items_per_page - count($packages);
-                                $exclude_ids = !empty($displayed_ids) ? implode(",", array_map('intval', $displayed_ids)) : "";
+                                $exclude_ids = !empty($displayed_ids) ? implode(",", array_map('intval', $displayed_ids)) : "0";
 
                                 $fallback_query = $base_query;
-                                if (!empty($exclude_ids)) {
-                                    $fallback_query .= " AND id NOT IN ($exclude_ids)";
-                                }
+                                $fallback_query .= " AND id NOT IN ($exclude_ids)";
                                 $fallback_query .= " ORDER BY RAND() LIMIT $remaining";
+                                error_log("Fallback Query: $fallback_query");
 
-                                $fallback_result = $conn->query($fallback_query);
-                                if ($fallback_result && $fallback_result->num_rows > 0) {
-                                    while ($row = $fallback_result->fetch_assoc()) {
+                                $result = $conn->query($fallback_query);
+                                if ($result && $result->num_rows > 0) {
+                                    while ($row = $result->fetch_assoc()) {
                                         $packages[] = $row;
                                     }
                                 }
                             }
                         } else {
-                            // No user preferences found, just get random packages
+                            // No valid category IDs found, fetch random packages
                             $query = $base_query . " ORDER BY RAND() LIMIT $offset, $items_per_page";
+                            error_log("Random Query: $query");
                             $result = $conn->query($query);
                             if ($result && $result->num_rows > 0) {
                                 while ($row = $result->fetch_assoc()) {
@@ -269,13 +309,13 @@
                             }
                         }
                     } else {
-                        // No user preferences set, just show random packages
                         $query = "SELECT * FROM packages WHERE status = 1";
                         if (!empty($search_query)) {
                             $query .= " AND title LIKE '%" . $conn->real_escape_string($search_query) . "%'";
                         }
                         $query .= $category_sql;
                         $query .= " ORDER BY RAND() LIMIT $offset, $items_per_page";
+                        error_log("No Preference Query: $query");
 
                         $packages = [];
                         $result = $conn->query($query);
@@ -288,11 +328,13 @@
                     break;
             }
 
-            // For non-recommended sorts, we use the standard querying method
             if ($sort_type != 'recommended' || (empty($user_preference) && empty($packages))) {
                 $packages = [];
+                error_log("Main Query: $query");
                 $result = $conn->query($query);
-                if ($result && $result->num_rows > 0) {
+                if (!$result) {
+                    echo '<p class="text-center text-white">Error executing package query: ' . htmlspecialchars($conn->error) . '</p>';
+                } elseif ($result->num_rows > 0) {
                     while ($row = $result->fetch_assoc()) {
                         $packages[] = $row;
                     }
@@ -300,7 +342,21 @@
             }
 
             if (empty($packages)) {
-                echo '<p class="text-center text-white">No destinations found matching your search.</p>';
+                $message = "No destinations found.";
+                if (!empty($category_filter)) {
+                    $category_labels = array_map(function ($id) use ($category_names) {
+                        return isset($category_names[$id]) ? $category_names[$id] : "ID $id";
+                    }, $category_filter);
+                    $message .= " The selected categories (" . implode(", ", $category_labels) . ") do not match any packages.";
+                    if (!$category_match_check) {
+                        $message .= " No packages in the database have these category IDs in their category field.";
+                    }
+                }
+                if (!empty($search_query)) {
+                    $message .= " Try adjusting your search term or filters.";
+                }
+                $message .= " Check the admin panel to ensure packages are assigned to the selected categories.";
+                echo '<p class="text-center text-white">' . $message . '</p>';
             }
 
             foreach ($packages as $row) :

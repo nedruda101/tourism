@@ -148,19 +148,7 @@
                 <div class="form-group">
                     <input type="password" class="form-control auth-input" name="password" placeholder="Password" required>
                 </div>
-                <div class="form-group">
-                    <label for="preference">Select your preferences:</label>
-                    <div class="btn-group" id="preference" role="group" aria-label="Preferences">
-                        <input type="checkbox" class="btn-check" id="nature_trip" name="preference[]" value="nature_trip" autocomplete="off">
-                        <label class="btn btn-outline-primary" for="nature_trip">Nature Trip</label>
 
-                        <input type="checkbox" class="btn-check" id="food_trip" name="preference[]" value="food_trip" autocomplete="off">
-                        <label class="btn btn-outline-primary" for="food_trip">Food Trip</label>
-
-                        <input type="checkbox" class="btn-check" id="hiking" name="preference[]" value="hiking" autocomplete="off">
-                        <label class="btn btn-outline-primary" for="hiking">Hiking</label>
-                    </div>
-                </div>
 
                 <div class="form-group d-flex justify-content-between">
                     <button type="button" class="btn btn-link auth-link" onclick="shiftToLogin()">Back to Login</button>
@@ -197,11 +185,11 @@
                 },
                 success: function(resp) {
                     if (typeof resp == 'object' && resp.status == 'success') {
-                        // Show success message but don't reload
+
                         alert_toast("Account successfully registered", 'success');
-                        // Reset the form instead of reloading
+
                         $('#registration')[0].reset();
-                        // Optionally switch back to login view
+
                         setTimeout(function() {
                             shiftToLogin();
                         }, 2000);
@@ -231,15 +219,37 @@
                 dataType: "json",
                 error: err => {
                     console.log(err);
-                    alert_toast("an error occurred", 'error');
+                    alert_toast("An error occurred", 'error');
                     end_loader();
                 },
                 success: function(resp) {
+                    end_loader();
+
                     if (typeof resp == 'object' && resp.status == 'success') {
-                        alert_toast("Login Successfully", 'success');
-                        setTimeout(function() {
-                            location.reload();
-                        }, 2000);
+
+                        if (resp.preferences_set) {
+
+                            window.location.href = _base_url_ + resp.redirect;
+                        } else {
+
+                            Swal.fire({
+                                title: 'Login Successful!',
+                                text: "Set your preferences to get better recommendations.",
+                                icon: 'success',
+                                showCancelButton: true,
+                                confirmButtonText: 'Set Preferences',
+                                cancelButtonText: 'Skip for Now',
+                                reverseButtons: true
+                            }).then((result) => {
+                                if (result.isConfirmed) {
+
+                                    window.location.href = _base_url_ + resp.redirect;
+                                } else if (result.dismiss === Swal.DismissReason.cancel) {
+
+                                    window.location.href = _base_url_ + "index.php";
+                                }
+                            });
+                        }
                     } else if (resp.status == 'incorrect') {
                         var _err_el = $('<div>');
                         _err_el.addClass("alert alert-danger err-msg").text("Incorrect Credentials.");
@@ -247,11 +257,15 @@
                         end_loader();
                     } else {
                         console.log(resp);
-                        alert_toast("an error occurred", 'error');
+                        alert_toast("An error occurred", 'error');
                         end_loader();
                     }
                 }
             });
         });
+
+
+
+
     });
 </script>

@@ -22,7 +22,6 @@ class Master extends DBConnection
 		extract($_POST);
 		$data = "";
 
-
 		foreach ($_POST as $k => $v) {
 			if (!in_array($k, array('id', 'description', 'category'))) {
 				if (!empty($data)) $data .= ",";
@@ -30,19 +29,16 @@ class Master extends DBConnection
 			}
 		}
 
-
 		if (isset($_POST['description'])) {
 			if (!empty($data)) $data .= ",";
 			$data .= " `description`='" . addslashes(htmlentities($description)) . "' ";
 		}
 
-
-		if (isset($_POST['category']) && !empty($_POST['category'])) {
-			$categories = implode(",", $_POST['category']);
-			if (!empty($data)) $data .= ",";
-			$data .= " `category`='{$categories}' ";
-		}
-
+		// Handle category as JSON
+		$categories = isset($_POST['category']) ? $_POST['category'] : array();
+		$category_json = json_encode($categories);
+		if (!empty($data)) $data .= ",";
+		$data .= " `category`='{$category_json}' ";
 
 		if (empty($id)) {
 			$sql = "INSERT INTO `packages` set {$data} ";
@@ -52,7 +48,6 @@ class Master extends DBConnection
 			$sql = "UPDATE `packages` set {$data} where id = '{$id}' ";
 			$save = $this->conn->query($sql);
 		}
-
 
 		if ($save) {
 			if (isset($_FILES['img']) && count($_FILES['img']['tmp_name']) > 0) {
@@ -65,7 +60,6 @@ class Master extends DBConnection
 					move_uploaded_file($_FILES['img']['tmp_name'][$k], base_app . $upload_path . '/' . $_FILES['img']['name'][$k]);
 				}
 			}
-
 
 			if (isset($_FILES['video']) && $_FILES['video']['error'] == 0) {
 				$video_path = 'uploads/video_' . $id . '/';
@@ -81,16 +75,15 @@ class Master extends DBConnection
 				}
 			}
 
-
 			$resp['status'] = 'success';
 		} else {
-
 			$resp['status'] = 'failed';
 			$resp['err'] = $this->conn->error . "[{$sql}]";
 		}
 
 		return json_encode($resp);
 	}
+
 
 
 
@@ -203,7 +196,6 @@ class Master extends DBConnection
 		extract($_POST);
 		$resp = array();
 
-
 		if (empty($firstname) || empty($lastname) || empty($username) || empty($password)) {
 			$resp['status'] = 'failed';
 			$resp['msg'] = 'All fields are required.';
@@ -219,13 +211,11 @@ class Master extends DBConnection
 		}
 
 
-		$preference_str = isset($preference) && is_array($preference) ? implode(',', $preference) : '';
-
-
 		$hashed_password = md5($password);
 
-		$sql = "INSERT INTO users (firstname, lastname, username, password, preference) 
-            VALUES (?, ?, ?, ?, ?)";
+
+		$sql = "INSERT INTO users (firstname, lastname, username, password) 
+            VALUES (?, ?, ?, ?)";
 		$stmt = $this->conn->prepare($sql);
 		if ($stmt === false) {
 			$resp['status'] = 'failed';
@@ -233,8 +223,7 @@ class Master extends DBConnection
 			return json_encode($resp);
 		}
 
-
-		$stmt->bind_param("sssss", $firstname, $lastname, $username, $hashed_password, $preference_str);
+		$stmt->bind_param("ssss", $firstname, $lastname, $username, $hashed_password);
 
 		if ($stmt->execute()) {
 			$resp['status'] = 'success';
@@ -251,19 +240,38 @@ class Master extends DBConnection
 
 
 
+
+
 	function update_account()
 	{
 		extract($_POST);
-		$data = "";
+		$resp = [];
+
+		$check = $this->conn->query("SELECT * FROM `users` WHERE `username` = '{$username}' AND `id` != {$id}")->num_rows;
+		if ($check > 0) {
+			$resp['status'] = 'failed';
+			$resp['msg'] = "Username already taken.";
+			return json_encode($resp);
+		}
 
 
 		if (!empty($password)) {
-			$_POST['password'] = md5($password);
-			if (md5($cpassword) != $this->settings->userdata('password')) {
+
+			$stmt = $this->conn->prepare("SELECT `password` FROM `users` WHERE `id` = ?");
+			$stmt->bind_param("i", $id);
+			$stmt->execute();
+			$result = $stmt->get_result();
+			$stored_password = $result->fetch_assoc()['password'];
+			$stmt->close();
+
+
+			if (md5($cpassword) !== $stored_password) {
 				$resp['status'] = 'failed';
 				$resp['msg'] = "Current Password is Incorrect";
 				return json_encode($resp);
 			}
+
+			$_POST['password'] = md5($password);
 		}
 
 
@@ -273,29 +281,28 @@ class Master extends DBConnection
 			$_POST['preference'] = '';
 		}
 
-		$check = $this->conn->query("SELECT * FROM `users` WHERE `username`='{$username}' AND `id` != $id")->num_rows;
-		if ($check > 0) {
-			$resp['status'] = 'failed';
-			$resp['msg'] = "Username already taken.";
-			return json_encode($resp);
-		}
 
-
+		$data = "";
 		foreach ($_POST as $k => $v) {
-			if ($k == 'cpassword' || ($k == 'password' && empty($v)))
+			if ($k == 'cpassword' || ($k == 'password' && empty($v))) {
 				continue;
-			if (!empty($data)) $data .= ", ";
+			}
+			if (!empty($data)) {
+				$data .= ", ";
+			}
 			$v = $this->conn->real_escape_string($v);
 			$data .= " `{$k}`='{$v}' ";
 		}
 
-		$save = $this->conn->query("UPDATE `users` SET $data WHERE id = $id ");
-		if ($save) {
-			foreach ($_POST as $k => $v) {
-				if ($k != 'cpassword')
-					$this->settings->set_userdata($k, $v);
-			}
 
+		$save = $this->conn->query("UPDATE `users` SET $data WHERE id = {$id}");
+		if ($save) {
+
+			foreach ($_POST as $k => $v) {
+				if ($k != 'cpassword') {
+					$this->settings->set_userdata($k, $v);
+				}
+			}
 			$resp['status'] = 'success';
 		} else {
 			$resp['status'] = 'failed';
@@ -592,6 +599,63 @@ class Master extends DBConnection
 
 		return $contacts;
 	}
+	// Category management functions
+	function save_category()
+	{
+		global $conn;
+		extract($_POST);
+
+		$data = " name = '$name' ";
+		$data .= ", description = '$description' ";
+
+		if (empty($id)) {
+			$sql = "INSERT INTO categories SET $data";
+		} else {
+			$sql = "UPDATE categories SET $data WHERE id = $id";
+		}
+
+		$save = $conn->query($sql);
+
+		if ($save) {
+			$resp['status'] = 'success';
+		} else {
+			$resp['status'] = 'failed';
+			$resp['error'] = $conn->error;
+		}
+
+		return json_encode($resp);
+	}
+
+	function get_category()
+	{
+		global $conn;
+		extract($_POST);
+
+		$sql = "SELECT * FROM categories WHERE id = $id";
+		$qry = $conn->query($sql);
+
+		$resp['status'] = 'success';
+		$resp['data'] = $qry->fetch_assoc();
+
+		return json_encode($resp);
+	}
+
+	function delete_category()
+	{
+		global $conn;
+		extract($_POST);
+
+		$delete = $conn->query("DELETE FROM categories WHERE id = $id");
+
+		if ($delete) {
+			$resp['status'] = 'success';
+		} else {
+			$resp['status'] = 'failed';
+			$resp['error'] = $conn->error;
+		}
+
+		return json_encode($resp);
+	}
 }
 
 $Master = new Master();
@@ -655,6 +719,15 @@ switch ($action) {
 		break;
 	case 'delete_review':
 		echo $Master->delete_review();
+		break;
+	case 'save_category':
+		echo $Master->save_category();
+		break;
+	case 'get_category':
+		echo $Master->get_category();
+		break;
+	case 'delete_category':
+		echo $Master->delete_category();
 		break;
 	default:
 		// echo $sysset->index();

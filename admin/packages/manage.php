@@ -31,14 +31,19 @@ if (isset($_GET['id']) && $_GET['id'] > 0) {
             <div class="form-group">
                 <label for="category">Select Categories:</label>
                 <div role="group" aria-label="Categories">
-                    <input type="checkbox" id="nature_trip" name="category[]" value="nature_trip" autocomplete="off">
-                    <label for="nature_trip">Nature Trip</label>
-
-                    <input type="checkbox" id="food_trip" name="category[]" value="food_trip" autocomplete="off">
-                    <label for="food_trip">Food Trip</label>
-
-                    <input type="checkbox" id="hiking" name="category[]" value="hiking" autocomplete="off">
-                    <label for="hiking">Hiking</label>
+                    <?php
+                    $selected_categories = isset($category) ? json_decode($category) : array();
+                    $cat_qry = $conn->query("SELECT * FROM categories ORDER BY name ASC");
+                    while ($cat_row = $cat_qry->fetch_assoc()) :
+                        $is_checked = in_array($cat_row['id'], $selected_categories) ? "checked" : "";
+                    ?>
+                        <div class="custom-control custom-checkbox">
+                            <input type="checkbox" class="custom-control-input" id="category_<?php echo $cat_row['id']; ?>" name="category[]" value="<?php echo $cat_row['id']; ?>" <?php echo $is_checked; ?>>
+                            <label class="custom-control-label" for="category_<?php echo $cat_row['id']; ?>">
+                                <?php echo $cat_row['name']; ?>
+                            </label>
+                        </div>
+                    <?php endwhile; ?>
                 </div>
             </div>
 

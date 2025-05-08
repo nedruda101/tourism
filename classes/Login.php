@@ -48,15 +48,29 @@ class Login extends DBConnection
     {
         extract($_POST);
         $qry = $this->conn->query("SELECT * FROM users WHERE username = '$username' AND password = md5('$password') AND type = 0");
+
         if ($qry->num_rows > 0) {
-            foreach ($qry->fetch_array() as $k => $v) {
+            $user = $qry->fetch_array();
+
+            if (!empty($user['preference'])) {
+
+                $resp['status'] = 'success';
+                $resp['redirect'] = '/index.php';
+                $resp['preferences_set'] = true;
+            } else {
+
+                $resp['status'] = 'success';
+                $resp['redirect'] = '/?page=edit_account';
+                $resp['preferences_set'] = false;
+            }
+
+            foreach ($user as $k => $v) {
                 if (!is_numeric($k) && $k != 'password') {
                     $this->settings->set_userdata($k, $v);
                 }
             }
+
             $this->settings->set_userdata('login_type', 0);
-            $resp['status'] = 'success';
-            $resp['redirect'] = '/index.php';
         } else {
             $resp['status'] = 'incorrect';
         }
@@ -65,8 +79,11 @@ class Login extends DBConnection
             $resp['status'] = 'failed';
             $resp['_error'] = $this->conn->error;
         }
+
         return json_encode($resp);
     }
+
+
 
     public function logout()
     {

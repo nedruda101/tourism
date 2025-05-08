@@ -25,21 +25,24 @@
 
                 <div class="form-group">
                     <label for="preference">Select your preferences:</label>
-                    <div class="btn-group" id="preference" role="group" aria-label="Preferences">
+                    <div class="btn-group" role="group" aria-label="Preferences" id="preference">
                         <?php
-                        $user_prefs = explode(',', $_settings->userdata('preference') ?? '');
+
+                        $user_preferences = $_settings->userdata('preference');
+                        $preferences_array = !empty($user_preferences) ? explode(',', $user_preferences) : []; // Convert to array if not empty
+
+
+                        $query = $conn->query("SELECT * FROM categories ORDER BY name ASC");
+                        while ($row = $query->fetch_assoc()) :
+                            $value = strtolower(str_replace(' ', '_', $row['name']));
+                            $is_checked = in_array($value, $preferences_array) ? 'checked' : ''; // Check if the preference is set
+                            $active_class = in_array($value, $preferences_array) ? 'active' : ''; // Add active class if preference is set
                         ?>
-                        <input type="checkbox" class="btn-check" id="nature_trip" name="preference[]" value="nature_trip" autocomplete="off" <?php echo in_array('nature_trip', $user_prefs) ? 'checked' : '' ?>>
-                        <label class="btn btn-outline-primary" for="nature_trip">Nature Trip</label>
-
-                        <input type="checkbox" class="btn-check" id="food_trip" name="preference[]" value="food_trip" autocomplete="off" <?php echo in_array('food_trip', $user_prefs) ? 'checked' : '' ?>>
-                        <label class="btn btn-outline-primary" for="food_trip">Food Trip</label>
-
-                        <input type="checkbox" class="btn-check" id="hiking" name="preference[]" value="hiking" autocomplete="off" <?php echo in_array('hiking', $user_prefs) ? 'checked' : '' ?>>
-                        <label class="btn btn-outline-primary" for="hiking">Hiking</label>
+                            <input type="checkbox" class="btn-check" id="<?= $value ?>" name="preference[]" value="<?= $value ?>" autocomplete="off" <?= $is_checked ?>>
+                            <label class="btn btn-outline-primary <?= $active_class ?>" for="<?= $value ?>"><?= htmlspecialchars($row['name']) ?></label>
+                        <?php endwhile; ?>
                     </div>
                 </div>
-
 
                 <div class="form-group">
                     <label for="password" class="control-label">New Password</label>
@@ -61,45 +64,61 @@
 
 <script>
     $(function() {
-        $('#update_account [name="password"],#update_account [name="cpassword"]').on('input', function() {
-            if ($('#update_account [name="password"]').val() != '' || $('#update_account [name="cpassword"]').val() != '')
-                $('#update_account [name="password"],#update_account [name="cpassword"]').attr('required', true);
-            else
-                $('#update_account [name="password"],#update_account [name="cpassword"]').attr('required', false);
-        })
+
+        $('#preference input[type="checkbox"]:checked').each(function() {
+            $(this).next('label').addClass('active');
+        });
+
+
+        $('#preference input[type="checkbox"]').change(function() {
+            if ($(this).is(':checked')) {
+                $(this).next('label').addClass('active');
+            } else {
+                $(this).next('label').removeClass('active');
+            }
+        });
+
+
+        $('#update_account [name="password"], #update_account [name="cpassword"]').on('input', function() {
+            if ($('#update_account [name="password"]').val() != '' || $('#update_account [name="cpassword"]').val() != '') {
+                $('#update_account [name="password"], #update_account [name="cpassword"]').attr('required', true);
+            } else {
+                $('#update_account [name="password"], #update_account [name="cpassword"]').attr('required', false);
+            }
+        });
+
+
         $('#update_account').submit(function(e) {
             e.preventDefault();
-            start_loader()
-            if ($('.err-msg').length > 0)
-                $('.err-msg').remove();
+            start_loader();
+            if ($('.err-msg').length > 0) $('.err-msg').remove();
             $.ajax({
                 url: _base_url_ + "classes/Master.php?f=update_account",
                 method: "POST",
                 data: $(this).serialize(),
                 dataType: "json",
                 error: err => {
-                    console.log(err)
-                    alert_toast("an error occured", 'error')
-                    end_loader()
+                    console.log(err);
+                    alert_toast("an error occurred", 'error');
+                    end_loader();
                 },
                 success: function(resp) {
                     if (typeof resp == 'object' && resp.status == 'success') {
-                        alert_toast("Account succesfully updated", 'success');
-                        $('#update_account [name="password"],#update_account [name="cpassword"]').attr('required', false);
-                        $('#update_account [name="password"],#update_account [name="cpassword"]').val('');
+                        alert_toast("Account successfully updated", 'success');
+                        $('#update_account [name="password"], #update_account [name="cpassword"]').attr('required', false);
+                        $('#update_account [name="password"], #update_account [name="cpassword"]').val('');
                     } else if (resp.status == 'failed' && !!resp.msg) {
-                        var _err_el = $('<div>')
-                        _err_el.addClass("alert alert-danger err-msg").text(resp.msg)
-                        $('#update_account').prepend(_err_el)
-                        end_loader()
-
+                        var _err_el = $('<div>');
+                        _err_el.addClass("alert alert-danger err-msg").text(resp.msg);
+                        $('#update_account').prepend(_err_el);
+                        end_loader();
                     } else {
-                        console.log(resp)
-                        alert_toast("an error occured", 'error')
+                        console.log(resp);
+                        alert_toast("an error occurred", 'error');
                     }
-                    end_loader()
+                    end_loader();
                 }
-            })
-        })
-    })
+            });
+        });
+    });
 </script>

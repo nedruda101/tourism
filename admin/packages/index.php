@@ -8,8 +8,10 @@
 	<div class="card-header">
 		<h3 class="card-title">Destination</h3>
 		<div class="card-tools">
+			<a href="?page=packages/categories" class="btn btn-flat btn-info"><span class="fas fa-tags"></span> Manage Categories</a>
 			<a href="?page=packages/manage" class="btn btn-flat btn-primary"><span class="fas fa-plus"></span> Create New</a>
 		</div>
+
 	</div>
 	<div class="card-body">
 
@@ -66,6 +68,7 @@
 										<div class="dropdown-divider"></div>
 										<a class="dropdown-item delete_data" href="javascript:void(0)" data-id="<?php echo $row['id'] ?>"><span class="fa fa-trash text-danger"></span> Delete</a>
 									</div>
+
 								</td>
 							</tr>
 						<?php endwhile; ?>
