@@ -235,15 +235,19 @@
                     $user_preference = isset($_SESSION['userdata']['preference']) ? $_SESSION['userdata']['preference'] : '';
 
                     if (!empty($user_preference)) {
+                        // Check if preference is already stored as JSON
+                        $preference_array = json_decode($user_preference, true);
 
-                        $preferences = array_map('trim', explode(',', $user_preference));
-
-
-                        $category_ids = [];
-                        if (!empty($preferences)) {
-                            $pref W_names = implode("','", array_map(array($conn, 'real_escape_string'), $preferences));
+                        if (json_last_error() === JSON_ERROR_NONE && is_array($preference_array)) {
+                            // If it's valid JSON, use the category IDs directly
+                            $category_ids = $preference_array;
+                        } else {
+                            // If it's a comma-separated string of category names, convert to IDs
+                            $preferences = array_map('trim', explode(',', $user_preference));
                             $pref_names = implode("','", array_map(array($conn, 'real_escape_string'), $preferences));
+                            $category_query = "SELECT id FROM categories WHERE name IN ('$pref_names')";
                             $category_result = $conn->query($category_query);
+                            $category_ids = [];
                             if ($category_result) {
                                 while ($row = $category_result->fetch_assoc()) {
                                     $category_ids[] = $row['id'];
