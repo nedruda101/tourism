@@ -141,6 +141,7 @@ $covers = $_settings->info('cover') ? json_decode($_settings->info('cover'), tru
 			<hr class="border-warning" style="border:3px solid" width="30%">
 		</div>
 		<div class="row">
+
 			<?php
 			$user_preference = isset($_SESSION['userdata']['preference']) ? $_SESSION['userdata']['preference'] : '';
 			$max_display = 6;
@@ -148,27 +149,40 @@ $covers = $_settings->info('cover') ? json_decode($_settings->info('cover'), tru
 			$packages = [];
 
 			if (!empty($user_preference)) {
-				// Step 1: Get category IDs matching user preference names
-				$preference_names = array_map('trim', explode(',', $user_preference));
-				$escaped_names = array_map(function ($name) use ($conn) {
-					return "'" . $conn->real_escape_string($name) . "'";
-				}, $preference_names);
-				$name_list = implode(',', $escaped_names);
 
-				$cat_res = $conn->query("SELECT id FROM categories WHERE name IN ($name_list)");
-				$pref_ids = [];
-				while ($row = $cat_res->fetch_assoc()) {
-					$pref_ids[] = $row['id'];
+				$preference_array = json_decode($user_preference, true);
+
+				if (json_last_error() === JSON_ERROR_NONE && is_array($preference_array)) {
+
+					$pref_ids = $preference_array;
+				} else {
+					// If it's a comma-separated string of category names, convert to IDs
+					$preference_names = array_map('trim', explode(',', $user_preference));
+					$escaped_names = array_map(function ($name) use ($conn) {
+						return "'" . $conn->real_escape_string($name) . "'";
+					}, $preference_names);
+					$name_list = implode(',', $escaped_names);
+
+					$cat_res = $conn->query("SELECT id FROM categories WHERE name IN ($name_list)");
+					$pref_ids = [];
+					if ($cat_res && $cat_res->num_rows > 0) {
+						while ($row = $cat_res->fetch_assoc()) {
+							$pref_ids[] = $row['id'];
+						}
+					}
 				}
 
-				// Step 2: Fetch packages matching any preference category ID
+				// If we have preference IDs to match
 				if (!empty($pref_ids)) {
 					$conditions = [];
 					foreach ($pref_ids as $cat_id) {
-						$conditions[] = "JSON_CONTAINS(category, '\"$cat_id\"')";
+						$safe_cat_id = $conn->real_escape_string($cat_id);
+						$conditions[] = "JSON_CONTAINS(category, '\"$safe_cat_id\"')";
 					}
 					$where_clause = implode(" OR ", $conditions);
-					$pref_query = "SELECT * FROM packages WHERE $where_clause LIMIT $max_display";
+
+					// First query: Get packages that match the preference categories
+					$pref_query = "SELECT * FROM packages WHERE status = 1 AND ($where_clause) ORDER BY RAND() LIMIT $max_display";
 					$result = $conn->query($pref_query);
 
 					if ($result && $result->num_rows > 0) {
@@ -177,22 +191,42 @@ $covers = $_settings->info('cover') ? json_decode($_settings->info('cover'), tru
 							$displayed_ids[] = $row['id'];
 						}
 					}
-				}
 
-				// Step 3: Fill up with random packages if needed
-				$remaining = $max_display - count($packages);
-				if ($remaining > 0) {
-					$exclude = !empty($displayed_ids) ? "WHERE id NOT IN (" . implode(',', $displayed_ids) . ")" : "";
-					$fallback = $conn->query("SELECT * FROM packages $exclude ORDER BY RAND() LIMIT $remaining");
-					while ($row = $fallback->fetch_assoc()) {
-						$packages[] = $row;
+					// Second query: Fill up with random packages if needed
+					$remaining = $max_display - count($packages);
+					if ($remaining > 0 && !empty($displayed_ids)) {
+						$exclude = implode(',', array_map('intval', $displayed_ids));
+						$fallback = $conn->query("SELECT * FROM packages WHERE status = 1 AND id NOT IN ($exclude) ORDER BY RAND() LIMIT $remaining");
+						if ($fallback && $fallback->num_rows > 0) {
+							while ($row = $fallback->fetch_assoc()) {
+								$packages[] = $row;
+							}
+						}
+					} elseif ($remaining > 0) {
+						// No packages matched preferences, get random packages
+						$fallback = $conn->query("SELECT * FROM packages WHERE status = 1 ORDER BY RAND() LIMIT $remaining");
+						if ($fallback && $fallback->num_rows > 0) {
+							while ($row = $fallback->fetch_assoc()) {
+								$packages[] = $row;
+							}
+						}
+					}
+				} else {
+					// No valid preference IDs found, show random packages
+					$res = $conn->query("SELECT * FROM packages WHERE status = 1 ORDER BY RAND() LIMIT $max_display");
+					if ($res && $res->num_rows > 0) {
+						while ($row = $res->fetch_assoc()) {
+							$packages[] = $row;
+						}
 					}
 				}
 			} else {
-				// No preference? Show 6 random
-				$res = $conn->query("SELECT * FROM packages ORDER BY RAND() LIMIT $max_display");
-				while ($row = $res->fetch_assoc()) {
-					$packages[] = $row;
+				// No preference? Show 6 random packages
+				$res = $conn->query("SELECT * FROM packages WHERE status = 1 ORDER BY RAND() LIMIT $max_display");
+				if ($res && $res->num_rows > 0) {
+					while ($row = $res->fetch_assoc()) {
+						$packages[] = $row;
+					}
 				}
 			}
 

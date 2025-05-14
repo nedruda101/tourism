@@ -231,18 +231,18 @@
                         LIMIT $offset, $items_per_page
                     ";
                     break;
-                default: // 'recommended'
+                default:
                     $user_preference = isset($_SESSION['userdata']['preference']) ? $_SESSION['userdata']['preference'] : '';
 
                     if (!empty($user_preference)) {
-                        // Split user preferences into an array
+
                         $preferences = array_map('trim', explode(',', $user_preference));
 
-                        // Fetch category IDs for the preference names
+
                         $category_ids = [];
                         if (!empty($preferences)) {
                             $pref W_names = implode("','", array_map(array($conn, 'real_escape_string'), $preferences));
-                            $category_query = "SELECT id FROM categories WHERE name IN ('$pref_names')";
+                            $pref_names = implode("','", array_map(array($conn, 'real_escape_string'), $preferences));
                             $category_result = $conn->query($category_query);
                             if ($category_result) {
                                 while ($row = $category_result->fetch_assoc()) {
